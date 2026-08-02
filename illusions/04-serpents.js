@@ -2,36 +2,38 @@
  *
  * Kitaoka's peripheral drift. Nothing here moves: every pixel is identical from
  * the first frame to the last. The rotation is manufactured by the retina from
- * the asymmetric luminance step noir → bleu → blanc → jaune, which the motion
- * detectors of peripheral vision read as a direction of travel.
+ * an asymmetric luminance sequence, which motion detectors read as a direction
+ * of travel when the eye shifts across it.
  *
- * Three construction details decide whether it fires at all, and getting the
- * colour sequence right is only the first:
+ * The construction follows the published recipe rather than an approximation of
+ * it, because each departure measurably costs effect:
  *
- *   - Tiles must be roughly square. A fixed unit count per ring turns them into
- *     slivers near the centre and slabs at the rim, and the drift dies. The
- *     count therefore grows with radius.
- *   - The gaps between rings must be clearly lighter than the black tiles. On a
- *     near-black ground they merge, the rings stop reading as separate snakes,
- *     and the luminance profile is corrupted exactly where it must be sharp.
- *   - The pattern has to be large. The effect lives in peripheral vision, so on
- *     a phone a grid of small discs sits almost entirely in the fovea, where it
- *     does not work. Better few and big, bleeding off the edges.
+ *   - The sequence is {noir, g1, blanc, g2} with g1 ≈ 20 % and g2 ≈ 60 % of
+ *     linear luminance — the values measured off Kitaoka's own images. A first
+ *     pass here used 8 % and 71 %, both outside the optimum. Reversing the
+ *     sequence reverses the drift; making it symmetric abolishes it.
+ *   - Tiles must be roughly square, so the number of units per ring grows with
+ *     radius. A fixed count turns them into slivers at the centre and slabs at
+ *     the rim.
+ *   - Rings need a background clearly lighter than the black tiles, or the two
+ *     merge and the sequence loses the step it depends on.
  *
- * The image must also stay rigorously still — any real motion would both mask
- * the effect and make the claim dishonest. The only animated element is a
- * fixation marker inviting the eye to move instead.
+ * There is deliberately no fixation marker. The effect is driven by
+ * microsaccades and blinks, and on steady fixation it vanishes outright — a
+ * target inviting the eye to settle is the one thing guaranteed to suppress it.
+ * The instruction lives in the question instead.
  */
 (function () {
   "use strict";
 
-  var NOIR = "#000000", BLEU = "#2f45b8", BLANC = "#ffffff", JAUNE = "#ffd91c";
-  var FOND = "#6e7579";       // mid grey: separates the rings without lighting up the feed
+  // Linear luminance: 0 %, 20.4 %, 100 %, 61.1 %
+  var NOIR = "#000000", BLEU = "#5a76de", BLANC = "#ffffff", JAUNE = "#edcb3f";
+  var FOND = "#9a9a9a";       // 32 % — light enough to hold the rings apart
 
   function disque(ctx, cx, cy, rmax, bandes, sens) {
-    var rmin = rmax * 0.16;
+    var rmin = rmax * 0.15;
     var pas = (rmax - rmin) / bandes;
-    var epais = pas * 0.80;                       // the rest is background gap
+    var epais = pas * 0.92;                       // thin gap: the field stays dense
 
     for (var b = 0; b < bandes; b++) {
       var rin = rmin + b * pas;
@@ -65,13 +67,12 @@
     id: "serpents",
     index: "N° 04",
     nom: "Serpents tournants",
-    question: "Cette image est parfaitement immobile.",
+    question: "Rien ne bouge ici. Bougez les yeux.",
     duree: 8,
     statique: true,
     params: [
-      { id: "anneaux", nom: "Anneaux", min: 3, max: 10, val: 6 },
-      { id: "taille", nom: "Taille", min: 24, max: 52, val: 38, div: 100 },
-      { id: "guide", nom: "Point de fixation", min: 0, max: 1, val: 1, bool: true }
+      { id: "anneaux", nom: "Anneaux", min: 3, max: 12, val: 7 },
+      { id: "taille", nom: "Taille", min: 20, max: 50, val: 32, div: 100 }
     ],
 
     dessine: function (env, phase, p) {
@@ -81,42 +82,21 @@
       ctx.fillStyle = FOND;
       ctx.fillRect(0, 0, env.W, env.H);
 
-      // Big discs on a loose grid, allowed to run past the edges. Coverage of
-      // the periphery matters more than showing each disc whole.
+      // Discs on a loose grid, allowed to run past the edges. The effect lives in
+      // peripheral vision, so covering the field matters more than showing each
+      // disc whole — and on a phone a grid of small discs sits in the fovea,
+      // where it does not work at all.
       var r = env.W * p.taille / 100;
-      var pasX = r * 1.94, pasY = r * 1.94;
+      var pasX = r * 1.96, pasY = r * 1.96;
       var cols = Math.max(2, Math.round(env.W / pasX) + 1);
-      var rangs = Math.max(2, Math.round(hauteur / pasY));
-      var centres = [];
+      var rangs = Math.max(2, Math.round(hauteur / pasY) + 1);
 
       for (var j = 0; j < rangs; j++) {
         for (var i = 0; i < cols; i++) {
           var cx = env.W / 2 + (i - (cols - 1) / 2) * pasX;
           var cy = haut + hauteur / 2 + (j - (rangs - 1) / 2) * pasY;
-          centres.push([cx, cy]);
           disque(ctx, cx, cy, r, p.anneaux, ((i + j) % 2 ? -1 : 1));
         }
-      }
-
-      // Saccade prompt. The illusion feeds on eye movement, so guiding the gaze
-      // across the field strengthens it — without touching a pixel of the discs.
-      if (p.guide) {
-        var n = centres.length;
-        var k = Math.floor(phase * n) % n;
-        var c = centres[k];
-        var pulse = 0.55 + 0.45 * Math.sin(phase * n * Math.PI * 2);
-        var d = r * 0.05 * (1 + pulse * 0.35);
-        ctx.save();
-        ctx.strokeStyle = "rgba(0,0,0,0.85)";
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(c[0] - d, c[1]); ctx.lineTo(c[0] + d, c[1]);
-        ctx.moveTo(c[0], c[1] - d); ctx.lineTo(c[0], c[1] + d);
-        ctx.stroke();
-        ctx.strokeStyle = "#3ddc84";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.restore();
       }
     }
   });

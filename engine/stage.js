@@ -115,7 +115,7 @@
 
     var basScrim = ctx.createLinearGradient(0, this.H * 0.855, 0, this.H);
     basScrim.addColorStop(0, "rgba(0,0,0,0)");
-    basScrim.addColorStop(0.45, "rgba(0,0,0,0.86)");
+    basScrim.addColorStop(0.22, "rgba(0,0,0,0.88)");
     basScrim.addColorStop(1, "rgba(0,0,0,0.96)");
     ctx.fillStyle = basScrim;
     ctx.fillRect(0, this.H * 0.855, this.W, this.H * 0.145);

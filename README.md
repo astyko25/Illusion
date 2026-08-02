@@ -38,11 +38,18 @@ répétitions sont une copie de flux — pas de réencodage, pas de perte, et un
 quasi nul.
 
 Le n° 04 est le seul dont l'effet ne se vérifie pas en mesurant des pixels : il
-n'existe que dans la perception. Ce qui se contrôle, c'est la conformité de la
-construction à la recette — tuiles carrées sur tous les anneaux, fond nettement
+n'existe que dans la perception. Ce qui se contrôle est la conformité à la
+recette publiée, et elle l'est point par point : séquence `{noir, g1, blanc, g2}`
+avec g1 = 20,4 % et g2 = 61,1 % de luminance linéaire (l'optimum mesuré sur les
+images de Kitaoka est 20 % / 60 %), tuiles carrées sur tous les anneaux, fond
 plus clair que les tuiles noires, motif assez grand pour atteindre la vision
-périphérique. Les trois sont vérifiés ; l'effet lui-même varie selon les
-personnes et la distance de lecture.
+périphérique.
+
+Il n'y a **pas** de point de fixation, et c'est délibéré : l'effet est déclenché
+par les microsaccades et les clignements, et il disparaît en fixation stable.
+Un repère invitant l'œil à se poser est la seule chose qui le supprime à coup
+sûr. L'instruction est donc dans la question. Environ 5 % des personnes ne
+voient rien malgré tout.
 
 Le n° 05 choisit sa paire de cases en sondant l'image finie, avec l'égalité
 exacte des pixels comme contrainte : si aucune paire ne la satisfait, le rendu
