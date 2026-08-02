@@ -103,6 +103,23 @@
     ctx.save();
     ctx.textAlign = "center";
 
+    // Scrims behind the type. Over a black specimen they are invisible, so they
+    // cost nothing there; over a bright, busy one — the snakes especially — they
+    // are the only thing keeping the question and the wordmark readable.
+    var hautScrim = ctx.createLinearGradient(0, 0, 0, this.H * 0.26);
+    hautScrim.addColorStop(0, "rgba(0,0,0,0.92)");
+    hautScrim.addColorStop(0.62, "rgba(0,0,0,0.72)");
+    hautScrim.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hautScrim;
+    ctx.fillRect(0, 0, this.W, this.H * 0.26);
+
+    var basScrim = ctx.createLinearGradient(0, this.H * 0.855, 0, this.H);
+    basScrim.addColorStop(0, "rgba(0,0,0,0)");
+    basScrim.addColorStop(0.45, "rgba(0,0,0,0.86)");
+    basScrim.addColorStop(1, "rgba(0,0,0,0.96)");
+    ctx.fillStyle = basScrim;
+    ctx.fillRect(0, this.H * 0.855, this.W, this.H * 0.145);
+
     // Question, top of frame. Sized down a step when it needs three lines so the
     // block never creeps toward the specimen.
     var size = Math.round(this.W * 0.072);

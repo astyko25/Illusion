@@ -64,12 +64,12 @@
         ctx.save();
         ctx.globalAlpha = Math.min(1, cue * 1.6);
         ctx.fillStyle = gris(SOMBRE);
-        var w = C.pas * 0.30;
+        var wA = C.pasA * 0.30, wB = C.pasB * 0.30;
         ctx.beginPath();
-        ctx.moveTo(C.cA[0] - w, C.cA[1]);
-        ctx.lineTo(C.cA[0] + w, C.cA[1]);
-        ctx.lineTo(C.cB[0] + w, C.cB[1]);
-        ctx.lineTo(C.cB[0] - w, C.cB[1]);
+        ctx.moveTo(C.cA[0] - wA, C.cA[1]);
+        ctx.lineTo(C.cA[0] + wA, C.cA[1]);
+        ctx.lineTo(C.cB[0] + wB, C.cB[1]);
+        ctx.lineTo(C.cB[0] - wB, C.cB[1]);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -308,9 +308,12 @@
       this.valeur = paire.a[2];
 
       var cA = centre(this.A), cB = centre(this.B);
+      // Square width at each row separately: perspective makes B's row markedly
+      // narrower, so a single figure would misplace anything measured from it.
       return {
         cle: cle, canvas: cv, cA: cA, cB: cB,
-        pas: Math.abs(proj(1, this.A[1])[0] - proj(0, this.A[1])[0])
+        pasA: Math.abs(proj(1, this.A[1] + 0.5)[0] - proj(0, this.A[1] + 0.5)[0]),
+        pasB: Math.abs(proj(1, this.B[1] + 0.5)[0] - proj(0, this.B[1] + 0.5)[0])
       };
     }
   });

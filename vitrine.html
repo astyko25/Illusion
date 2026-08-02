@@ -390,6 +390,23 @@
     ctx.save();
     ctx.textAlign = "center";
 
+    // Scrims behind the type. Over a black specimen they are invisible, so they
+    // cost nothing there; over a bright, busy one — the snakes especially — they
+    // are the only thing keeping the question and the wordmark readable.
+    var hautScrim = ctx.createLinearGradient(0, 0, 0, this.H * 0.26);
+    hautScrim.addColorStop(0, "rgba(0,0,0,0.92)");
+    hautScrim.addColorStop(0.62, "rgba(0,0,0,0.72)");
+    hautScrim.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hautScrim;
+    ctx.fillRect(0, 0, this.W, this.H * 0.26);
+
+    var basScrim = ctx.createLinearGradient(0, this.H * 0.855, 0, this.H);
+    basScrim.addColorStop(0, "rgba(0,0,0,0)");
+    basScrim.addColorStop(0.45, "rgba(0,0,0,0.86)");
+    basScrim.addColorStop(1, "rgba(0,0,0,0.96)");
+    ctx.fillStyle = basScrim;
+    ctx.fillRect(0, this.H * 0.855, this.W, this.H * 0.145);
+
     // Question, top of frame. Sized down a step when it needs three lines so the
     // block never creeps toward the specimen.
     var size = Math.round(this.W * 0.072);
@@ -799,30 +816,51 @@
  *
  * Kitaoka's peripheral drift. Nothing here moves: every pixel is identical from
  * the first frame to the last. The rotation is manufactured by the retina from
- * the asymmetric luminance step black → bleu → blanc → jaune, which the motion
- * detectors in peripheral vision read as a direction of travel.
+ * the asymmetric luminance step noir → bleu → blanc → jaune, which the motion
+ * detectors of peripheral vision read as a direction of travel.
  *
- * Because of that, the image must stay rigorously still — any real motion would
- * both mask the effect and make the claim dishonest. The only animated element
- * is a fixation marker that invites the eye to move instead.
+ * Three construction details decide whether it fires at all, and getting the
+ * colour sequence right is only the first:
+ *
+ *   - Tiles must be roughly square. A fixed unit count per ring turns them into
+ *     slivers near the centre and slabs at the rim, and the drift dies. The
+ *     count therefore grows with radius.
+ *   - The gaps between rings must be clearly lighter than the black tiles. On a
+ *     near-black ground they merge, the rings stop reading as separate snakes,
+ *     and the luminance profile is corrupted exactly where it must be sharp.
+ *   - The pattern has to be large. The effect lives in peripheral vision, so on
+ *     a phone a grid of small discs sits almost entirely in the fovea, where it
+ *     does not work. Better few and big, bleeding off the edges.
+ *
+ * The image must also stay rigorously still — any real motion would both mask
+ * the effect and make the claim dishonest. The only animated element is a
+ * fixation marker inviting the eye to move instead.
  */
 (function () {
   "use strict";
 
-  var NOIR = "#000000", BLEU = "#3a4fc0", BLANC = "#ffffff", JAUNE = "#ffdc1e";
-  var FOND = "#14181a";
+  var NOIR = "#000000", BLEU = "#2f45b8", BLANC = "#ffffff", JAUNE = "#ffd91c";
+  var FOND = "#6e7579";       // mid grey: separates the rings without lighting up the feed
 
-  function disque(ctx, cx, cy, rmax, bandes, seg, sens) {
-    var rmin = rmax * 0.20;
+  function disque(ctx, cx, cy, rmax, bandes, sens) {
+    var rmin = rmax * 0.16;
     var pas = (rmax - rmin) / bandes;
+    var epais = pas * 0.80;                       // the rest is background gap
+
     for (var b = 0; b < bandes; b++) {
       var rin = rmin + b * pas;
-      var rout = rin + pas * 0.86;                 // gap between snakes
+      var rout = rin + epais;
+      var rmid = (rin + rout) / 2;
+
+      // Four tiles per unit, each about as wide as the ring is thick.
+      var unites = Math.max(3, Math.round(Math.PI * 2 * rmid / (4 * epais)));
+      var pasA = Math.PI * 2 / unites;
+
       var dir = ((b % 2 === 0) ? 1 : -1) * sens;
-      var suite = dir > 0 ? [NOIR, BLEU, BLANC, JAUNE] : [JAUNE, BLANC, BLEU, NOIR];
-      var pasA = Math.PI * 2 / seg;
-      var decal = b * pasA * 0.5;                  // stagger so bands read as snakes
-      for (var s = 0; s < seg; s++) {
+      var suite = dir > 0 ? [NOIR, BLEU, BLANC, JAUNE] : [NOIR, JAUNE, BLANC, BLEU];
+      var decal = b * pasA * 0.37;                // stagger so rings read as separate snakes
+
+      for (var s = 0; s < unites; s++) {
         for (var q = 0; q < 4; q++) {
           var a0 = decal + s * pasA + q * pasA / 4;
           var a1 = a0 + pasA / 4;
@@ -835,8 +873,6 @@
         }
       }
     }
-    ctx.fillStyle = BLANC;
-    ctx.beginPath(); ctx.arc(cx, cy, rmin * 0.55, 0, 6.2832); ctx.fill();
   }
 
   ILLUSIONS.push({
@@ -847,49 +883,52 @@
     duree: 8,
     statique: true,
     params: [
-      { id: "bandes", nom: "Anneaux", min: 3, max: 9, val: 5 },
-      { id: "seg", nom: "Segments", min: 8, max: 26, val: 16 },
+      { id: "anneaux", nom: "Anneaux", min: 3, max: 10, val: 6 },
+      { id: "taille", nom: "Taille", min: 24, max: 52, val: 38, div: 100 },
       { id: "guide", nom: "Point de fixation", min: 0, max: 1, val: 1, bool: true }
     ],
 
     dessine: function (env, phase, p) {
       var ctx = env.ctx;
-      var haut = env.safe.haut, bas = env.safe.bas;
-      var hauteur = bas - haut;
+      var haut = env.safe.haut, bas = env.safe.bas, hauteur = bas - haut;
 
       ctx.fillStyle = FOND;
       ctx.fillRect(0, 0, env.W, env.H);
 
-      var cols = 2, rangs = 2;
-      var r = Math.min(env.W / (cols * 2.25), hauteur / (rangs * 2.25));
-      var gx = env.W / 2, gy = haut + hauteur / 2;
-      var pasX = r * 2.12, pasY = r * 2.12;
+      // Big discs on a loose grid, allowed to run past the edges. Coverage of
+      // the periphery matters more than showing each disc whole.
+      var r = env.W * p.taille / 100;
+      var pasX = r * 1.94, pasY = r * 1.94;
+      var cols = Math.max(2, Math.round(env.W / pasX) + 1);
+      var rangs = Math.max(2, Math.round(hauteur / pasY));
       var centres = [];
 
       for (var j = 0; j < rangs; j++) {
         for (var i = 0; i < cols; i++) {
-          var cx = gx + (i - (cols - 1) / 2) * pasX;
-          var cy = gy + (j - (rangs - 1) / 2) * pasY;
+          var cx = env.W / 2 + (i - (cols - 1) / 2) * pasX;
+          var cy = haut + hauteur / 2 + (j - (rangs - 1) / 2) * pasY;
           centres.push([cx, cy]);
-          disque(ctx, cx, cy, r, p.bandes, p.seg, ((i + j) % 2 ? -1 : 1));
+          disque(ctx, cx, cy, r, p.anneaux, ((i + j) % 2 ? -1 : 1));
         }
       }
 
       // Saccade prompt. The illusion feeds on eye movement, so guiding the gaze
-      // between discs strengthens it — without touching a single pixel of them.
+      // across the field strengthens it — without touching a pixel of the discs.
       if (p.guide) {
         var n = centres.length;
         var k = Math.floor(phase * n) % n;
         var c = centres[k];
         var pulse = 0.55 + 0.45 * Math.sin(phase * n * Math.PI * 2);
+        var d = r * 0.05 * (1 + pulse * 0.35);
         ctx.save();
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = "#3ddc84";
-        ctx.lineWidth = 3;
-        var d = r * 0.055 * (1 + pulse * 0.3);
+        ctx.strokeStyle = "rgba(0,0,0,0.85)";
+        ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(c[0] - d, c[1]); ctx.lineTo(c[0] + d, c[1]);
         ctx.moveTo(c[0], c[1] - d); ctx.lineTo(c[0], c[1] + d);
+        ctx.stroke();
+        ctx.strokeStyle = "#3ddc84";
+        ctx.lineWidth = 3;
         ctx.stroke();
         ctx.restore();
       }
@@ -965,12 +1004,12 @@
         ctx.save();
         ctx.globalAlpha = Math.min(1, cue * 1.6);
         ctx.fillStyle = gris(SOMBRE);
-        var w = C.pas * 0.30;
+        var wA = C.pasA * 0.30, wB = C.pasB * 0.30;
         ctx.beginPath();
-        ctx.moveTo(C.cA[0] - w, C.cA[1]);
-        ctx.lineTo(C.cA[0] + w, C.cA[1]);
-        ctx.lineTo(C.cB[0] + w, C.cB[1]);
-        ctx.lineTo(C.cB[0] - w, C.cB[1]);
+        ctx.moveTo(C.cA[0] - wA, C.cA[1]);
+        ctx.lineTo(C.cA[0] + wA, C.cA[1]);
+        ctx.lineTo(C.cB[0] + wB, C.cB[1]);
+        ctx.lineTo(C.cB[0] - wB, C.cB[1]);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -1209,9 +1248,12 @@
       this.valeur = paire.a[2];
 
       var cA = centre(this.A), cB = centre(this.B);
+      // Square width at each row separately: perspective makes B's row markedly
+      // narrower, so a single figure would misplace anything measured from it.
       return {
         cle: cle, canvas: cv, cA: cA, cB: cB,
-        pas: Math.abs(proj(1, this.A[1])[0] - proj(0, this.A[1])[0])
+        pasA: Math.abs(proj(1, this.A[1] + 0.5)[0] - proj(0, this.A[1] + 0.5)[0]),
+        pasB: Math.abs(proj(1, this.B[1] + 0.5)[0] - proj(0, this.B[1] + 0.5)[0])
       };
     }
   });
