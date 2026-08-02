@@ -131,7 +131,11 @@ Détail savoureux : l'ampleur de cette illusion varie selon les cultures et selo
 l'âge. Les jeunes enfants s'y laissent moins prendre que les adultes — ils
 intègrent moins le contexte.
 
-De combien vous sembleraient-ils différents, à vue de nez ? 10 % ? 20 % ?
+Regardez bien la fin : les deux disques glissent l'un contre l'autre sans jamais
+changer de taille. C'est le seul moyen de vous convaincre — un pied à coulisse,
+on peut toujours le soupçonner.
+
+De combien vous semblaient-ils différents, à vue de nez ? 10 % ? 20 % ?
 
 ## 7 — n° 03 · Cube de Necker
 

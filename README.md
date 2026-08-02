@@ -31,7 +31,7 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 12 s | 36 s |
 | n° 06 | Spirale de Fraser | la spirale — ce sont des cercles fermés en cordage torsadé | 11 s | 33 s |
 | n° 07 | Mur du café | l'inclinaison — des rangées horizontales et un mortier intermédiaire | 11 s | 33 s |
-| n° 08 | Ebbinghaus | l'échelle absolue — deux disques identiques, deux entourages | 10 s | 30 s |
+| n° 08 | Ebbinghaus | l'échelle absolue — deux disques identiques, deux entourages | 12 s | 36 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
