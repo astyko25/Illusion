@@ -1240,6 +1240,307 @@
 })();
 </script>
 <script>
+/* illusions/06-fraser.js */
+/* n° 06 — Spirale de Fraser
+ *
+ * There is no spiral. Every arc here is a closed concentric circle; the twist
+ * comes from what each circle is *made of*. Each ring is a "twisted cord": short
+ * black-and-white segments laid at a constant angle to the tangent. The visual
+ * system integrates that local tilt along the contour and reads a continuous
+ * inward drift that is not there.
+ *
+ * The chequered ground is not decoration — it supplies the competing local
+ * orientation cues the effect feeds on. On a plain ground the twist weakens
+ * sharply.
+ *
+ * Unlike the peripheral drift, this one is near universal and survives steady
+ * fixation, which is what makes it safe for a feed.
+ */
+(function () {
+  "use strict";
+
+  var GRIS_A = "#5c6366", GRIS_B = "#868d90";
+  var NOIR = "#0a0c0d", BLANC = "#f2f5f3";
+
+  ILLUSIONS.push({
+    id: "fraser",
+    index: "N° 06",
+    nom: "Spirale de Fraser",
+    question: "Suivez une spirale du doigt.",
+    duree: 11,
+    revele: { debut: 0.5, texte: "Ce sont des cercles fermés" },
+    params: [
+      { id: "anneaux", nom: "Anneaux", min: 4, max: 12, val: 8 },
+      { id: "biais", nom: "Biais des torons", min: 8, max: 42, val: 26 },
+      { id: "damier", nom: "Fond damier", min: 0, max: 1, val: 1, bool: true }
+    ],
+
+    dessine: function (env, phase, p, cue) {
+      var ctx = env.ctx, S = env.box;
+      var cx = env.cx, cy = env.cy;
+      var R = S * 0.47;
+
+      ctx.save();
+
+      // Chequered ground: the local orientation cues the illusion competes with.
+      ctx.fillStyle = GRIS_A;
+      ctx.fillRect(0, 0, env.W, env.H);
+      if (p.damier) {
+        var cote = R * 0.135;
+        ctx.fillStyle = GRIS_B;
+        for (var gy = 0; gy < Math.ceil(env.H / cote); gy++) {
+          for (var gx = 0; gx < Math.ceil(env.W / cote); gx++) {
+            if ((gx + gy) % 2) ctx.fillRect(gx * cote, gy * cote, cote + 1, cote + 1);
+          }
+        }
+      }
+
+      var n = p.anneaux;
+      var r0 = R * 0.16;
+      var dr = (R - r0) / n;
+      var epais = dr * 0.62;
+      var biais = p.biais * Math.PI / 180;
+
+      for (var i = 0; i < n; i++) {
+        var r = r0 + (i + 0.5) * dr;
+        // Segment count chosen so the cord reads as a continuous twist rather
+        // than a dashed ring.
+        var seg = Math.max(12, Math.round(Math.PI * 2 * r / (epais * 1.35)));
+        var pasA = Math.PI * 2 / seg;
+        var L = r * pasA * 1.22;
+        var decal = (i % 2) * pasA * 0.5;
+
+        for (var k = 0; k < seg; k++) {
+          var a = decal + k * pasA;
+          var px = cx + r * Math.cos(a);
+          var py = cy + r * Math.sin(a);
+          // Tilt relative to the tangent — the whole illusion lives in this angle.
+          var t = a + Math.PI / 2 + biais;
+          var dx = Math.cos(t) * L / 2, dy = Math.sin(t) * L / 2;
+
+          ctx.strokeStyle = (k % 2) ? NOIR : BLANC;
+          ctx.lineWidth = epais;
+          ctx.lineCap = "butt";
+          ctx.beginPath();
+          ctx.moveTo(px - dx, py - dy);
+          ctx.lineTo(px + dx, py + dy);
+          ctx.stroke();
+        }
+      }
+
+      // Proof: draw one of the rings as what it actually is — a closed circle.
+      if (cue > 0.01) {
+        var idx = Math.floor(n * 0.62);
+        var rr = r0 + (idx + 0.5) * dr;
+        ctx.globalAlpha = Math.min(1, cue * 1.5);
+        ctx.strokeStyle = "#c8ff6a";
+        ctx.lineWidth = Math.max(4, epais * 0.30);
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // A marker running the full circumference and returning to its start,
+        // which is the part that actually settles the argument.
+        var av = (phase - this.revele.debut) / (1 - this.revele.debut);
+        av = Math.max(0, Math.min(1, av));
+        var am = -Math.PI / 2 + av * Math.PI * 2;
+        ctx.fillStyle = "#c8ff6a";
+        ctx.beginPath();
+        ctx.arc(cx + rr * Math.cos(am), cy + rr * Math.sin(am), epais * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/07-cafe.js */
+/* n° 07 — Mur du café
+ *
+ * Every row of tiles is exactly horizontal and every row is exactly parallel to
+ * the next. They read as wedges because of the mortar: a thin line whose
+ * luminance sits *between* the two tile values. That intermediate line lets
+ * small local contours at each tile corner tilt one way or the other, and the
+ * visual system integrates those tilts into a slope across the whole row.
+ *
+ * Two parameters decide whether it fires, and both are easy to get wrong:
+ * the mortar must be genuinely intermediate — pushed to black or to white the
+ * illusion collapses outright — and it must be thin relative to the tiles.
+ * The offset between successive rows sets the direction of the apparent slope.
+ */
+(function () {
+  "use strict";
+
+  var NOIR = "#0b0d0e", BLANC = "#eef2ef";
+
+  ILLUSIONS.push({
+    id: "cafe",
+    index: "N° 07",
+    nom: "Mur du café",
+    question: "Ces lignes sont-elles parallèles ?",
+    duree: 11,
+    revele: { debut: 0.5, texte: "Parfaitement parallèles" },
+    params: [
+      { id: "rangs", nom: "Rangées", min: 6, max: 18, val: 11 },
+      { id: "mortier", nom: "Mortier", min: 0, max: 100, val: 52, div: 100 },
+      { id: "decalage", nom: "Décalage", min: 0, max: 50, val: 25, div: 100 }
+    ],
+
+    dessine: function (env, phase, p, cue) {
+      var ctx = env.ctx;
+      var haut = env.safe.haut, bas = env.safe.bas, hauteur = bas - haut;
+
+      // Mortar tone. At 0 or 100 this becomes black or white and the illusion
+      // disappears entirely — the slider is there to make that demonstrable.
+      var m = Math.round(18 + p.mortier / 100 * 200);
+      var mortier = "rgb(" + m + "," + m + "," + m + ")";
+
+      ctx.fillStyle = mortier;
+      ctx.fillRect(0, 0, env.W, env.H);
+
+      var rangs = p.rangs;
+      var h = hauteur / rangs;
+      var epaisMortier = Math.max(2, h * 0.085);
+      var w = h * 1.85;
+      var lignes = [];
+
+      for (var j = 0; j < rangs; j++) {
+        var y = haut + j * h;
+        // Successive rows shifted by a fraction of a tile. The tilt peaks near a
+        // quarter tile and vanishes at zero and at a half — a half-tile offset is
+        // just a chequerboard, with no illusion left at all.
+        var dec = ((j % 2) ? p.decalage / 100 : 0) * w;
+        lignes.push(y);
+        var x0 = -w * 2 + dec;
+        var i = 0;
+        for (var x = x0; x < env.W + w; x += w, i++) {
+          ctx.fillStyle = (i % 2) ? BLANC : NOIR;
+          ctx.fillRect(x, y + epaisMortier / 2, w, h - epaisMortier);
+        }
+      }
+      lignes.push(haut + rangs * h);
+
+      // Proof: the mortar lines drawn as what they are — straight and parallel.
+      if (cue > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, cue * 1.5);
+        ctx.strokeStyle = "#c8ff6a";
+        ctx.lineWidth = Math.max(3, epaisMortier * 0.9);
+        // Sweep in from the left so the eye follows a genuinely straight edge.
+        var av = (phase - this.revele.debut) / (1 - this.revele.debut);
+        av = Math.max(0, Math.min(1, av));
+        var largeur = env.W * Math.min(1, av * 1.6);
+        ctx.beginPath();
+        for (var k = 0; k < lignes.length; k++) {
+          ctx.moveTo(0, lignes[k]);
+          ctx.lineTo(largeur, lignes[k]);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/08-ebbinghaus.js */
+/* n° 08 — Ebbinghaus
+ *
+ * The two central discs are drawn from the same radius. Judged size is relative,
+ * not absolute: a disc read against large neighbours is scaled down, one read
+ * against small neighbours is scaled up.
+ *
+ * The two groups are stacked rather than set side by side. At a size where the
+ * large satellites read as large, a horizontal pair simply does not fit across
+ * 1080 px — the groups collide well before the frame edge. Portrait has the room
+ * to spare vertically, so that is where it goes.
+ *
+ * The satellites rotate slowly. That motion touches nothing the illusion depends
+ * on — the central discs never move or change size — but it keeps the frame
+ * alive in a feed.
+ */
+(function () {
+  "use strict";
+
+  var CENTRE = "#3ddc84", SATELLITE = "#5e6d67", FOND = "#07090a";
+
+  ILLUSIONS.push({
+    id: "ebbinghaus",
+    index: "N° 08",
+    nom: "Ebbinghaus",
+    question: "Quel disque vert est le plus grand ?",
+    duree: 10,
+    revele: { debut: 0.48, texte: "Rigoureusement le même rayon" },
+    params: [
+      { id: "rayon", nom: "Disques centraux", min: 50, max: 110, val: 78, div: 10 },
+      { id: "grands", nom: "Grands satellites", min: 60, max: 120, val: 88, div: 10 },
+      { id: "petits", nom: "Petits satellites", min: 20, max: 50, val: 32, div: 10 }
+    ],
+
+    dessine: function (env, phase, p, cue) {
+      var ctx = env.ctx, W = env.W;
+      var r = W * p.rayon / 1000;
+      var rG = W * p.grands / 1000;
+      var rP = W * p.petits / 1000;
+
+      var orbG = r + rG + W * 0.015;
+      var orbP = r + rP + W * 0.024;
+      // Separation just clears both groups; anything less and they interlock.
+      var d = (orbG + rG + orbP + rP + W * 0.028) / 2;
+      var yG = env.cy - d, yP = env.cy + d;
+      var cx = W / 2;
+      var ang = phase * Math.PI * 2;
+
+      ctx.fillStyle = FOND;
+      ctx.fillRect(0, 0, W, env.H);
+
+      // Fading the context out is the demonstration: with the satellites gone,
+      // nothing is left to scale the discs against.
+      ctx.save();
+      ctx.globalAlpha = 1 - Math.min(1, cue * 1.35);
+      ctx.fillStyle = SATELLITE;
+      [[yG, rG, 6, orbG, 1], [yP, rP, 8, orbP, -1]].forEach(function (q) {
+        for (var i = 0; i < q[2]; i++) {
+          var a = ang * q[4] * 0.32 + i * Math.PI * 2 / q[2];
+          ctx.beginPath();
+          ctx.arc(cx + q[3] * Math.cos(a), q[0] + q[3] * Math.sin(a), q[1], 0, 6.2832);
+          ctx.fill();
+        }
+      });
+      ctx.restore();
+
+      ctx.fillStyle = CENTRE;
+      [yG, yP].forEach(function (y) {
+        ctx.beginPath();
+        ctx.arc(cx, y, r, 0, 6.2832);
+        ctx.fill();
+      });
+
+      // A caliper of the true diameter on each, drawn identically.
+      if (cue > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, cue * 1.5);
+        ctx.strokeStyle = "#c8ff6a";
+        ctx.lineWidth = 4;
+        var t = W * 0.019;
+        [yG, yP].forEach(function (y) {
+          var yb = y + r + W * 0.052;
+          ctx.beginPath();
+          ctx.moveTo(cx - r, yb - t); ctx.lineTo(cx - r, yb + t);
+          ctx.moveTo(cx + r, yb - t); ctx.lineTo(cx + r, yb + t);
+          ctx.moveTo(cx - r, yb); ctx.lineTo(cx + r, yb);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+    }
+  });
+})();
+</script>
+<script>
 (function () {
   "use strict";
   var stage = new Stage(document.getElementById("cv"), 1080, 1920);

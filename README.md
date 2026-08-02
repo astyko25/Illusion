@@ -29,6 +29,9 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 03 | Cube de Necker | les arêtes cachées — aucune face n'est privilégiée | 10 s | 30 s |
 | n° 04 | Serpents tournants | rien : l'image est fixe, la rotation est fabriquée par la rétine | 8 s | 32 s |
 | n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 12 s | 36 s |
+| n° 06 | Spirale de Fraser | la spirale — ce sont des cercles fermés en cordage torsadé | 11 s | 33 s |
+| n° 07 | Mur du café | l'inclinaison — des rangées horizontales et un mortier intermédiaire | 11 s | 33 s |
+| n° 08 | Ebbinghaus | l'échelle absolue — deux disques identiques, deux entourages | 10 s | 30 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -56,8 +59,11 @@ exacte des pixels comme contrainte : si aucune paire ne la satisfait, le rendu
 échoue au lieu de produire un post dont la légende serait fausse.
 
 Les n° 01 à 03 sont bistables — deux lectures également valides, et le cerveau
-bascule de l'une à l'autre. Les n° 04 et 05 ne sont pas ambiguës : elles sont
-fausses, et la page le prouve.
+bascule de l'une à l'autre. Les autres ne sont pas ambiguës : elles sont
+fausses, et la page le prouve dans la seconde moitié de la boucle.
+
+Les n° 06 à 08 ont été choisies pour leur robustesse : la quasi-totalité des
+gens les perçoivent, contrairement à la dérive périphérique du n° 04.
 
 ## Architecture
 
@@ -74,6 +80,7 @@ export/
   render.mjs    Chromium headless -> images PNG -> MP4 H.264
   vitrine.mjs   génère vitrine.html
 index.html      page longue consacrée à l'illusion n° 01
+legendes.md     légendes des Reels et ordre de publication
 ```
 
 ### Le contrat d'une scène
