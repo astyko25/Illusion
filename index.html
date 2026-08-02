@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Rotation ambiguë — illusion bistable</title>
+<title>Anneau ambigu — illusion bistable</title>
 <style>
   :root {
     color-scheme: dark;
@@ -108,7 +108,7 @@
   .stage {
     position: relative;
     width: min(560px, 92vw);
-    aspect-ratio: 0.74;
+    aspect-ratio: 1;
     background: var(--void);
     border: 1px solid var(--hairline);
     touch-action: none;
@@ -135,8 +135,12 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 14px;
+    bottom: 0;
     margin: 0;
+    /* The ring reaches the bottom of the frame near edge-on, so the readout needs
+       its own ground to stay legible over the speckle. */
+    padding: 26px 12px 13px;
+    background: linear-gradient(to top, rgba(0,0,0,0.92) 38%, rgba(0,0,0,0));
     text-align: center;
     font-family: var(--mono);
     font-size: 10.5px;
@@ -320,7 +324,7 @@
     <p class="eyebrow">Illusion bistable · n° 01</p>
     <h1>Pouvez-vous inverser le sens de rotation par la pensée&nbsp;?</h1>
     <p class="dek">
-      Rien dans cette image ne dit dans quel sens l'objet tourne. Les deux lectures sont
+      Rien dans cette image ne dit si le haut de l'anneau vient vers vous ou s'en éloigne. Les deux lectures sont
       géométriquement exactes — votre cortex visuel en choisit une, puis bascule.
     </p>
   </header>
@@ -345,9 +349,9 @@
 
     <div class="field">
       <label class="field-head" for="shape">
-        <span>Évasement</span><output id="shapeOut">0,35 · entonnoir</output>
+        <span>Épaisseur</span><output id="shapeOut">0,43 · tore</output>
       </label>
-      <input type="range" id="shape" min="0" max="100" value="35" aria-label="Évasement des entonnoirs polaires">
+      <input type="range" id="shape" min="15" max="80" value="43" aria-label="Épaisseur du tube">
     </div>
 
     <div class="field">
@@ -392,9 +396,7 @@
     <article class="note">
       <h2>Provoquer la bascule</h2>
       <p>
-        Fixez un seul bord de la silhouette plutôt que le centre, ou fermez les yeux deux secondes.
-        Le plus efficace : imaginez le point brillant du haut en train de passer <em>devant</em>
-        vous.
+        Fixez le bord supérieur de l'anneau plutôt que le centre, ou fermez les yeux deux secondes. Le plus efficace : décidez que ce bord passe <em>devant</em> vous, et regardez-le le faire.
       </p>
       <p>
         Les boutons <strong>Imposer un sens</strong> réintroduisent brièvement un dégradé de
@@ -406,19 +408,19 @@
     <article class="note">
       <h2>Le spécimen</h2>
       <p>
-        Deux surfaces de révolution imbriquées : une <strong>coque sphéroïdale</strong> ouverte
-        aux pôles, et une paire d'<strong>entonnoirs</strong> qui rentrent par ces ouvertures et
-        se rejoignent en une colonne axiale.
+        Un simple <strong>tore</strong>. Ce qui compte est l'axe : il ne tourne pas sur son axe
+        de symétrie — il <strong>bascule autour de la verticale</strong>. L'anneau s'ouvre en
+        disque, se referme en ellipse, puis en sablier, et recommence.
       </p>
-      <pre class="eq">coque    ρ = W·sin v,  y = k·cos v
-entonnoir ρ = m·a² + ε,  y = ±a·y₀
+      <pre class="eq">ρ = 1 + r·cos v
+x = ρ·cos u,  y = ρ·sin u,  z = r·sin v
 
-x = ρ·cos(u+θ)
-z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
+X = x·cos θ + z·sin θ
+Z = z·cos θ − x·sin θ   <em>← jeté à la projection</em></pre>
       <p>
-        Le curseur <em>Évasement</em> passe de <em>a²</em> à <em>a⁴</em> : d'une trompette
-        largement ouverte à une aiguille qui ne s'évase qu'au dernier moment. La bouche, elle,
-        reste soudée à l'ouverture de la coque.
+        C'est là que tenait mon premier essai raté : une surface de révolution tournant sur son
+        propre axe donne une image <em>invariante</em>. Seul le grain bougeait, la silhouette
+        jamais. Il n'y avait rien à inverser.
       </p>
     </article>
   </section>
@@ -453,40 +455,30 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
 
   var MAX = 60000;
 
-  // Radius of every point is radA + radB*mA + radC*mB, so the flare stays a live
-  // control without rebuilding the cloud.
-  var radA = new Float32Array(MAX);
-  var radB = new Float32Array(MAX);
-  var radC = new Float32Array(MAX);
-  var pY   = new Float32Array(MAX);
-  var cu   = new Float32Array(MAX);
-  var su   = new Float32Array(MAX);
-  var pr   = new Float32Array(MAX);
-  var pg   = new Float32Array(MAX);
-  var pb   = new Float32Array(MAX);
+  // A torus. u runs around the ring, v around the tube. Both angles are stored as
+  // their sine and cosine so the whole cloud is one multiply-add per frame and the
+  // tube radius stays a live control.
+  var cu = new Float32Array(MAX);
+  var su = new Float32Array(MAX);
+  var cv = new Float32Array(MAX);
+  var sv = new Float32Array(MAX);
+  var pr = new Float32Array(MAX);
+  var pg = new Float32Array(MAX);
+  var pb = new Float32Array(MAX);
 
-  var W_HALF = 1;        // equatorial radius
-  var K_HALF = 1.87;     // polar half-height — the reference proportion
-  var MOUTH  = 0.295;    // radius of the polar opening
-  // The shell stops exactly where the funnel enters, so mouth and hole always join.
-  var CAP    = Math.sqrt(1 - MOUTH * MOUTH);
-  var Y_MOUTH = CAP * K_HALF;
-  var FLOOR  = 0.012;    // residual radius of the axial column
-  var FUNNEL_SHARE = 0.20;
-
-  // t = 0 at the equator of the shell, 1 deep in the throat
+  // t = 0 on the outer equator of the tube, 1 on the face turned toward the hole
   function ramp(t, out) {
     var a;
     if (t < 0.55) {
       a = t / 0.55;
-      out[0] = 0.11 + (0.19 - 0.11) * a;
-      out[1] = 0.42 + (0.80 - 0.42) * a;
-      out[2] = 0.38 + (0.42 - 0.38) * a;
+      out[0] = 0.44 + (0.30 - 0.44) * a;
+      out[1] = 0.54 + (0.70 - 0.54) * a;
+      out[2] = 0.48 + (0.46 - 0.48) * a;
     } else {
       a = (t - 0.55) / 0.45;
-      out[0] = 0.19 + (0.74 - 0.19) * a;
-      out[1] = 0.80 + (1.00 - 0.80) * a;
-      out[2] = 0.42 + (0.34 - 0.42) * a;
+      out[0] = 0.34 + (0.45 - 0.34) * a;
+      out[1] = 0.72 + (1.00 - 0.72) * a;
+      out[2] = 0.50 + (0.40 - 0.50) * a;
     }
   }
 
@@ -494,36 +486,18 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
     var c = [0, 0, 0];
     for (var i = 0; i < MAX; i++) {
       var u = Math.random() * Math.PI * 2;
+      var v = Math.random() * Math.PI * 2;
+      // Slight radial fuzz so the tube reads as a speckled membrane, not a hard skin
+      var jitter = 1 + (Math.random() + Math.random() + Math.random() - 1.5) * 0.03;
+
       cu[i] = Math.cos(u);
       su[i] = Math.sin(u);
+      cv[i] = Math.cos(v) * jitter;
+      sv[i] = Math.sin(v) * jitter;
 
-      var jitter = (Math.random() + Math.random() + Math.random() - 1.5) * 0.02;
-      var t, emit;
-
-      if (Math.random() < FUNNEL_SHARE) {
-        // funnel: pick the normalised height a with density proportional to radius
-        var aa = 0;
-        for (var guard = 0; guard < 24; guard++) {
-          aa = Math.random();
-          if (Math.random() < (MOUTH * aa * aa + FLOOR) / (MOUTH + FLOOR)) break;
-        }
-        var a2 = aa * aa;
-        radA[i] = FLOOR + jitter * 0.3;
-        radB[i] = a2;          // wide trumpet
-        radC[i] = a2 * a2;     // tight needle — the flare control blends the two
-        pY[i] = (Math.random() < 0.5 ? 1 : -1) * aa * Y_MOUTH * (1 + jitter);
-        t = 0.5 + (1 - aa) * 0.5;
-        emit = 0.72 + (1 - aa) * 0.62;
-      } else {
-        // shell: uniform in cos v over the open band gives uniform area on the sphere
-        var cosv = (Math.random() * 2 - 1) * CAP;
-        radA[i] = W_HALF * Math.sqrt(1 - cosv * cosv) * (1 + jitter);
-        radB[i] = 0;
-        radC[i] = 0;
-        pY[i] = K_HALF * cosv * (1 + jitter);
-        t = Math.abs(cosv) * 0.45;
-        emit = 0.62;
-      }
+      // The face turned toward the hole is the one that glows.
+      var t = (1 - Math.cos(v)) * 0.5;
+      var emit = 0.50 + t * t * 0.95;
 
       ramp(t, c);
       pr[i] = c[0] * emit;
@@ -577,7 +551,7 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
   var angle = 0;
   var spinDir = 1;
   var speed = 0.45;          // turns per second
-  var flare = 0.35;          // 0 = wide trumpet, 1 = tight needle
+  var tube = 0.43;           // tube radius, ring radius fixed at 1
   var count = 34000;
   var depthOn = false;
   var assist = 0;            // transient depth cue from the nudge buttons
@@ -594,9 +568,9 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
     outSpeed.textContent = fmt(speed, 2) + " tr/s";
   }
   function syncShape() {
-    flare = elShape.value / 100;
-    var name = flare < 0.25 ? "trompette" : (flare < 0.65 ? "entonnoir" : "aiguille");
-    outShape.textContent = fmt(flare, 2) + " · " + name;
+    tube = elShape.value / 100;
+    var name = tube < 0.28 ? "anneau" : (tube < 0.55 ? "tore" : "bouée");
+    outShape.textContent = fmt(tube, 2) + " · " + name;
   }
   function syncDens() {
     count = elDens.value * 1000;
@@ -709,25 +683,35 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
     frameId++;
 
     var C = Math.cos(angle), S = Math.sin(angle);
-    var scale = Math.min(W / (2 * W_HALF), H / (2 * K_HALF)) * 0.92;
+    var span = 1 + tube;                       // outer radius of the ring
+    var scale = Math.min(W, H) / (2 * span) * 0.90;
     var ox = W * 0.5, oy = H * 0.5;
-    var invZ = 1 / W_HALF;
+    var invZ = 1 / span;
     var n = count;
-    var mA = MOUTH * (1 - flare), mB = MOUTH * flare;
+    var dens = 1 / (1 + tube);
 
     for (var i = 0; i < n; i++) {
-      var rho = radA[i] + radB[i] * mA + radC[i] * mB;
-      var ux = cu[i], uz = su[i];
-      var x = rho * (ux * C - uz * S);
-      var z = rho * (ux * S + uz * C);
+      // The ring lies in the xy plane facing the viewer and tumbles about the
+      // vertical axis. Spinning it about its own axis of symmetry instead would
+      // leave the silhouette invariant — the shape has to open and close.
+      var rho = 1 + tube * cv[i];
+      var x = rho * cu[i];
+      var y = rho * su[i];
+      var z = tube * sv[i];
 
-      var sx = ox + x * scale;
-      var sy = oy - pY[i] * scale;
+      var xr = x * C + z * S;
+      z      = z * C - x * S;
+
+      var sx = ox + xr * scale;
+      var sy = oy - y * scale;
 
       var x0 = sx | 0, y0 = sy | 0;
       if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= H - 1) continue;
 
-      var r = pr[i], g = pg[i], b = pb[i];
+      // Surface area on a torus goes as (R + r·cos v); weighting the emission is
+      // equivalent to sampling that density, and stays correct as the tube resizes.
+      var q = rho * dens;
+      var r = pr[i] * q, g = pg[i] * q, b = pb[i] * q;
 
       if (cue > 0) {
         // The silhouette rim sits at z = 0, so brightness alone barely moves the
@@ -797,6 +781,8 @@ z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
     if (playing || assist > 0) requestAnimationFrame(loop);
     else last = 0;
   }
+
+  window.__setAngle = function (a) { angle = a; draw(0); };
 
   window.addEventListener("resize", function () { draw(0); });
   draw(0);

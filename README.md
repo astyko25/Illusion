@@ -2,26 +2,31 @@
 
 Illusions d'optique interactives, rendues en direct dans le navigateur.
 
-## n° 01 — Rotation ambiguë
+## n° 01 — Anneau ambigu
 
 `index.html` — une page autonome, sans dépendance ni build.
 
-Un nuage de ~34 000 points décrit deux surfaces de révolution imbriquées : une
-coque sphéroïdale ouverte aux pôles, et une paire d'entonnoirs qui rentrent par
-ces ouvertures et se rejoignent en une colonne axiale.
+Un nuage de ~34 000 points décrit un **tore**, et surtout : il ne tourne pas sur
+son axe de symétrie, il **bascule autour de la verticale**. L'anneau s'ouvre en
+disque, se referme en ellipse, puis en sablier, et recommence.
 
-L'illusion tient à ce qui a été retiré du rendu : **projection orthographique**,
-pas de perspective, pas d'ombre, et une luminosité strictement indépendante de la
-profondeur. Deux volumes 3D produisent alors exactement la même image animée —
-l'un tournant vers la droite, l'autre vers la gauche. Le cerveau tranche
-arbitrairement, puis bascule.
+L'axe n'est pas un détail — c'est tout le sujet. Une surface de révolution qui
+tourne sur son propre axe donne une image invariante : seul le grain se déplace,
+la silhouette ne bouge jamais, et il n'y a rien à inverser. C'est la bascule qui
+crée les deux lectures.
+
+L'illusion tient ensuite à ce qui a été retiré du rendu : **projection
+orthographique**, pas de perspective, pas d'ombre, et une luminosité strictement
+indépendante de la profondeur. Deux volumes 3D produisent alors exactement la
+même image animée — l'un basculant vers l'avant, l'autre vers l'arrière. Le
+cerveau tranche arbitrairement, puis bascule.
 
 ### Contrôles
 
 | Contrôle | Effet |
 | --- | --- |
 | Vitesse | tours par seconde |
-| Évasement | profil des entonnoirs, de `a²` (trompette) à `a⁴` (aiguille) |
+| Épaisseur | rayon du tube, de l'anneau fin à la bouée |
 | Densité | 6 000 à 60 000 points |
 | Imposer un sens | maintenir pour réintroduire un indice de profondeur et forcer la lecture |
 | Révéler la profondeur | supprime l'ambiguïté en permanence |
