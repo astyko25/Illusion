@@ -99,7 +99,12 @@ for (const scene of choisies) {
   await ffmpeg([
     "-y", "-framerate", String(FPS),
     "-i", path.join(tmp, "%05d.png"),
-    "-c:v", "libx264", "-preset", "slow", "-crf", "17",
+    // Per-frame speckle is the worst case there is for inter-frame prediction:
+    // at CRF 17 the ring alone came out at 32 Mbit/s. Instagram re-encodes Reels
+    // to a few Mbit/s regardless, so the cap costs nothing visible and keeps the
+    // master to a size worth uploading.
+    "-c:v", "libx264", "-preset", "slow", "-crf", "20",
+    "-maxrate", "12M", "-bufsize", "24M",
     // yuv420p and even dimensions: anything else and Instagram re-encodes or rejects.
     "-pix_fmt", "yuv420p",
     "-vf", `scale=${LARGEUR}:${HAUTEUR}:flags=lanczos`,
