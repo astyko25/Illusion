@@ -14,6 +14,7 @@ npm install                      # playwright, pour l'export uniquement
 open studio.html                 # prévisualiser et régler
 node export/render.mjs anneau    # produire un MP4
 node export/render.mjs           # produire toute la série
+node export/render.mjs --duree 60   # viser des Reels d'une minute
 ```
 
 L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
@@ -21,13 +22,20 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 
 ## La série
 
-| | Illusion | Ce qui est retiré | Durée |
-| --- | --- | --- | --- |
-| n° 01 | Anneau ambigu | profondeur — un tore qui bascule autour de la verticale | 9 s |
-| n° 02 | Silhouette tournante | ombrage et occlusion — un corps en aplat | 6 s |
-| n° 03 | Cube de Necker | les arêtes cachées — aucune face n'est privilégiée | 10 s |
-| n° 04 | Serpents tournants | rien : l'image est fixe, la rotation est fabriquée par la rétine | 8 s |
-| n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 10 s |
+| | Illusion | Ce qui est retiré | Cycle | Reel |
+| --- | --- | --- | --- | --- |
+| n° 01 | Anneau ambigu | profondeur — un tore qui bascule autour de la verticale | 9 s | 36 s |
+| n° 02 | Silhouette tournante | ombrage et occlusion — un corps en aplat | 6 s | 30 s |
+| n° 03 | Cube de Necker | les arêtes cachées — aucune face n'est privilégiée | 10 s | 30 s |
+| n° 04 | Serpents tournants | rien : l'image est fixe, la rotation est fabriquée par la rétine | 8 s | 32 s |
+| n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 10 s | 30 s |
+
+Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
+longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
+souvent vingt secondes ou plus d'observation, et un tour unique ne laisse pas le
+temps au basculement d'arriver. Comme le cycle se referme à l'image près, les
+répétitions sont une copie de flux — pas de réencodage, pas de perte, et un coût
+quasi nul.
 
 Les n° 01 à 03 sont bistables — deux lectures également valides, et le cerveau
 bascule de l'une à l'autre. Les n° 04 et 05 ne sont pas ambiguës : elles sont

@@ -30,6 +30,11 @@ for (let i = 0; i < argv.length; i++) {
 }
 const cible = positionnels[0] ?? "all";
 const FPS = Number(opt("fps", 30));
+// A perceptual reversal takes time to arrive — often twenty seconds or more of
+// staring. One rotation is not a Reel, it is a fragment. Scenes therefore
+// declare the length of one cycle, and the export repeats it to reach a length
+// worth watching.
+const CIBLE = Number(opt("duree", 32));
 const SORTIE = path.resolve(opt("sortie", path.join(ICI, "sortie")));
 const LARGEUR = 1080, HAUTEUR = 1920;
 
@@ -75,7 +80,11 @@ for (const scene of choisies) {
   await rm(tmp, { recursive: true, force: true });
   await mkdir(tmp, { recursive: true });
 
-  process.stdout.write(`\n${scene.index}  ${scene.nom}  —  ${frames} images à ${FPS} i/s\n`);
+  const boucles = Math.max(1, Math.round(CIBLE / scene.duree));
+  process.stdout.write(
+    `\n${scene.index}  ${scene.nom}  —  ${frames} images à ${FPS} i/s` +
+    `  ×${boucles} = ${(scene.duree * boucles).toFixed(0)} s\n`
+  );
   await page.evaluate((id) => window.__scene(id), scene.id);
   verifie();
 
@@ -96,21 +105,35 @@ for (const scene of choisies) {
 
   verifie();
   const fichier = path.join(SORTIE, `${scene.index.replace(/\D+/g, "")}-${scene.id}.mp4`);
+  const cycle = boucles > 1 ? path.join(tmp, "cycle.mp4") : fichier;
   await ffmpeg([
     "-y", "-framerate", String(FPS),
     "-i", path.join(tmp, "%05d.png"),
     // Per-frame speckle is the worst case there is for inter-frame prediction:
     // at CRF 17 the ring alone came out at 32 Mbit/s. Instagram re-encodes Reels
-    // to a few Mbit/s regardless, so the cap costs nothing visible and keeps the
-    // master to a size worth uploading.
+    // to roughly 4 Mbit/s, so everything above about 8 is discarded on upload —
+    // the cap buys a much smaller file for no visible loss.
     "-c:v", "libx264", "-preset", "slow", "-crf", "20",
-    "-maxrate", "12M", "-bufsize", "24M",
+    "-maxrate", "8M", "-bufsize", "16M",
     // yuv420p and even dimensions: anything else and Instagram re-encodes or rejects.
     "-pix_fmt", "yuv420p",
     "-vf", `scale=${LARGEUR}:${HAUTEUR}:flags=lanczos`,
     "-movflags", "+faststart",
-    fichier
+    cycle
   ]);
+
+  if (boucles > 1) {
+    // The cycle already joins itself frame-perfectly, so repeating it is a
+    // stream copy: no re-encode, no generation loss, and the repeats cost
+    // almost nothing on top of the first pass.
+    const liste = path.join(tmp, "boucles.txt");
+    await writeFile(liste, Array(boucles).fill(`file '${cycle}'`).join("\n") + "\n");
+    await ffmpeg([
+      "-y", "-f", "concat", "-safe", "0", "-i", liste,
+      "-c", "copy", "-movflags", "+faststart", fichier
+    ]);
+  }
+
   await rm(tmp, { recursive: true, force: true });
   process.stdout.write(`\r  ${path.relative(RACINE, fichier)}  (${((Date.now() - t0) / 1000).toFixed(1)} s)\n`);
 }
