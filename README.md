@@ -32,6 +32,9 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 06 | Spirale de Fraser | la spirale — ce sont des cercles fermés en cordage torsadé | 11 s | 33 s |
 | n° 07 | Mur du café | l'inclinaison — des rangées horizontales et un mortier intermédiaire | 11 s | 33 s |
 | n° 08 | Ebbinghaus | l'échelle absolue — deux disques identiques, deux entourages | 12 s | 36 s |
+| n° 09 | Nœud de trèfle | profondeur — quel brin passe devant reste indécidable | 11 s | 33 s |
+| n° 10 | Ruban de Möbius | profondeur — une face, un bord, aucun sens de rotation | 11 s | 33 s |
+| n° 11 | Sphère de points | tout sauf le mécanisme : la silhouette ne bouge jamais | 9 s | 36 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -65,12 +68,19 @@ fausses, et la page le prouve dans la seconde moitié de la boucle.
 Les n° 06 à 08 ont été choisies pour leur robustesse : la quasi-totalité des
 gens les perçoivent, contrairement à la dérive périphérique du n° 04.
 
+Les n° 09 à 11 forment un banc d'essai. Toute forme 3D rendue sans indice de
+profondeur devient bistable, donc `engine/forme.js` mutualise l'opération et une
+nouvelle illusion se réduit à sa paramétrisation. Le n° 11 y sert de témoin :
+dépouillé de toute forme à admirer — sa silhouette est un cercle immobile —
+il isole le mécanisme seul.
+
 ## Architecture
 
 ```
 engine/
   fonts.css     Archivo 400/800 + IBM Plex Mono 500, inlinés en base64
   splat.js      rendu par accumulation pour les nuages de points
+  forme.js      nuage 3D tournant sans indice de profondeur, mutualisé
   stage.js      canvas, cadre de marque, horloge déterministe
 illusions/
   0*.js         une illusion par fichier, enregistrée dans window.ILLUSIONS

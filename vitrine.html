@@ -491,6 +491,128 @@
 })(window);
 </script>
 <script>
+/* engine/forme.js */
+/* Forme: a 3D point cloud spun without depth cues.
+ *
+ * Every bistable-rotation illusion in this series is the same operation applied
+ * to a different surface — build a cloud, spin it about the vertical, project
+ * orthographically, and refuse to draw any cue that would settle which half is
+ * nearer. Factoring that out means a new one costs only its parametrisation.
+ *
+ * The viewing tilt is applied *after* the spin and never animated: it fixes the
+ * vantage point without ever telling the eye which way the object turns.
+ */
+(function (global) {
+  "use strict";
+
+  var noyaux = {};
+  function disque(r) {
+    var cle = r.toFixed(2);
+    if (noyaux[cle]) return noyaux[cle];
+    var o = [], R = Math.ceil(r);
+    for (var dy = -R; dy <= R; dy++) {
+      for (var dx = -R; dx <= R; dx++) {
+        if (dx * dx + dy * dy <= r * r) o.push(dx, dy);
+      }
+    }
+    noyaux[cle] = o;
+    return o;
+  }
+
+  function Forme(max) {
+    this.max = max;
+    this.px = new Float32Array(max);
+    this.py = new Float32Array(max);
+    this.pz = new Float32Array(max);
+    this.cr = new Float32Array(max);
+    this.cg = new Float32Array(max);
+    this.cb = new Float32Array(max);
+    this.span = 1;
+  }
+
+  /* echant(i, out) writes x, y, z into out and returns a value in [0,1];
+     rampe(t, col) turns that value into an emissive colour. */
+  Forme.prototype.construire = function (echant, rampe) {
+    var out = [0, 0, 0], col = [0, 0, 0], span = 0;
+    for (var i = 0; i < this.max; i++) {
+      var t = echant(i, out);
+      this.px[i] = out[0]; this.py[i] = out[1]; this.pz[i] = out[2];
+      var d = Math.sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]);
+      if (d > span) span = d;
+      rampe(t, col);
+      this.cr[i] = col[0]; this.cg[i] = col[1]; this.cb[i] = col[2];
+    }
+    this.span = span || 1;
+    return this;
+  };
+
+  Forme.prototype.rendre = function (env, o) {
+    var sp = env.splat, S = env.box;
+    sp.gain = o.gain == null ? 5.5 : o.gain;
+    sp.setTint(o.cool == null ? 0.34 : o.cool, o.warm == null ? 0.18 : o.warm);
+    sp.begin();
+
+    var n = Math.min(o.n || this.max, this.max);
+    var C = Math.cos(o.angle), Sn = Math.sin(o.angle);
+    var inc = o.inclinaison || 0;
+    var ci = Math.cos(inc), si = Math.sin(inc);
+    var scale = S / (2 * this.span) * (o.cadre == null ? 0.92 : o.cadre);
+    var c = S / 2;
+    var invZ = 1 / this.span;
+    var out = [0, 0, 0];
+    var cue = o.cue || 0;
+    // Sparse clouds need points that read as points. A single bilinear splat is
+    // one pixel and vanishes; a small disc kernel gives a visible dot.
+    var noyau = o.rayon > 0.6 ? disque(o.rayon) : null;
+
+    for (var i = 0; i < n; i++) {
+      var x = this.px[i], y = this.py[i], z = this.pz[i];
+      var xr = x * C + z * Sn;
+      var zr = z * C - x * Sn;
+      var yr = y * ci - zr * si;
+      zr = y * si + zr * ci;
+      Splatter.cue(out, this.cr[i], this.cg[i], this.cb[i], zr * invZ, cue);
+      var sx = c + xr * scale, sy = c - yr * scale;
+      if (noyau) {
+        for (var k = 0; k < noyau.length; k += 2) {
+          sp.add(sx + noyau[k], sy + noyau[k + 1], out[0], out[1], out[2]);
+        }
+      } else {
+        sp.add(sx, sy, out[0], out[1], out[2]);
+      }
+    }
+
+    sp.end();
+    env.blit();
+  };
+
+  /* Shared emissive ramp so the whole family reads as one material. */
+  Forme.rampe = function (t, o) {
+    var a;
+    if (t < 0.55) {
+      a = t / 0.55;
+      o[0] = 0.20 + (0.30 - 0.20) * a;
+      o[1] = 0.46 + (0.74 - 0.46) * a;
+      o[2] = 0.44 + (0.46 - 0.44) * a;
+    } else {
+      a = (t - 0.55) / 0.45;
+      o[0] = 0.30 + (0.52 - 0.30) * a;
+      o[1] = 0.74 + (1.00 - 0.74) * a;
+      o[2] = 0.46 + (0.38 - 0.46) * a;
+    }
+    var e = 0.52 + t * t * 0.9;
+    o[0] *= e; o[1] *= e; o[2] *= e;
+  };
+
+  /* Gaussian-ish jitter, so surfaces read as speckled membranes. */
+  Forme.flou = function (amp) {
+    return (Math.random() + Math.random() + Math.random() - 1.5) * amp;
+  };
+
+  global.Forme = Forme;
+})(window);
+</script>
+<script>
 /* illusions/01-anneau.js */
 /* n° 01 — Anneau ambigu
  *
@@ -1559,6 +1681,253 @@
         });
         ctx.restore();
       }
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/09-trefle.js */
+/* n° 09 — Nœud de trèfle
+ *
+ * Same subtraction as the ring, applied to a knot: orthographic projection, no
+ * shading, no occlusion, brightness independent of depth. Which strand passes in
+ * front is then undecidable, and the whole knot turns both ways.
+ *
+ * Building the tube needs a frame at every point of the curve, and parallel
+ * transport does not close on itself after a full loop — it comes back rotated.
+ * Left alone that leaves a visible seam where the highlight band jumps. The
+ * residual twist is measured and spread evenly along the curve instead.
+ */
+(function () {
+  "use strict";
+
+  var PAS = 900;
+  var MAX = 52000;
+  var forme = null;
+
+  function courbe(t, o) {
+    o[0] = Math.sin(t) + 2 * Math.sin(2 * t);
+    o[1] = Math.cos(t) - 2 * Math.cos(2 * t);
+    o[2] = -Math.sin(3 * t);
+  }
+  function tangente(t, o) {
+    o[0] = Math.cos(t) + 4 * Math.cos(2 * t);
+    o[1] = -Math.sin(t) + 4 * Math.sin(2 * t);
+    o[2] = -3 * Math.cos(3 * t);
+  }
+  function norme(v) {
+    var d = Math.hypot(v[0], v[1], v[2]) || 1;
+    v[0] /= d; v[1] /= d; v[2] /= d;
+  }
+  function croix(a, b, o) {
+    o[0] = a[1] * b[2] - a[2] * b[1];
+    o[1] = a[2] * b[0] - a[0] * b[2];
+    o[2] = a[0] * b[1] - a[1] * b[0];
+  }
+
+  function reperes() {
+    var P = [], N = [], B = [], T = [];
+    var t = [0, 0, 0], p = [0, 0, 0], n = [0, 0, 0], b = [0, 0, 0];
+    for (var i = 0; i < PAS; i++) {
+      var u = i / PAS * Math.PI * 2;
+      courbe(u, p); tangente(u, t); norme(t);
+      P.push([p[0], p[1], p[2]]);
+      T.push([t[0], t[1], t[2]]);
+    }
+    // Seed a normal perpendicular to the first tangent, then carry it along.
+    var seed = Math.abs(T[0][2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+    croix(T[0], seed, n); norme(n);
+    N.push([n[0], n[1], n[2]]);
+    for (var j = 1; j < PAS; j++) {
+      var prev = N[j - 1], tj = T[j];
+      var d = prev[0] * tj[0] + prev[1] * tj[1] + prev[2] * tj[2];
+      var v = [prev[0] - d * tj[0], prev[1] - d * tj[1], prev[2] - d * tj[2]];
+      norme(v);
+      N.push(v);
+    }
+    // Holonomy: how far the transported normal has drifted after one full turn.
+    var last = N[PAS - 1], first = N[0], t0 = T[0];
+    croix(t0, first, b); norme(b);
+    var ca = last[0] * first[0] + last[1] * first[1] + last[2] * first[2];
+    var sa = last[0] * b[0] + last[1] * b[1] + last[2] * b[2];
+    var derive = Math.atan2(sa, ca);
+    for (var k = 0; k < PAS; k++) {
+      var a = -derive * k / PAS;
+      var tk = T[k], nk = N[k];
+      croix(tk, nk, b); norme(b);
+      var ck = Math.cos(a), sk = Math.sin(a);
+      N[k] = [nk[0] * ck + b[0] * sk, nk[1] * ck + b[1] * sk, nk[2] * ck + b[2] * sk];
+      croix(tk, N[k], b); norme(b);
+      B.push([b[0], b[1], b[2]]);
+    }
+    return { P: P, N: N, B: B };
+  }
+
+  ILLUSIONS.push({
+    id: "trefle",
+    index: "N° 09",
+    nom: "Nœud de trèfle",
+    question: "Dans quel sens tourne ce nœud ?",
+    duree: 11,
+    params: [
+      { id: "tube", nom: "Épaisseur", min: 20, max: 90, val: 52, div: 100 },
+      { id: "pts", nom: "Densité", min: 12, max: 52, val: 38, mult: 1000, suffixe: " pts" }
+    ],
+
+    init: function (env, p) {
+      var R = reperes();
+      var tube = p.tube / 100;
+      forme = new Forme(MAX);
+      forme.construire(function (i, o) {
+        var k = (Math.random() * PAS) | 0;
+        var v = Math.random() * Math.PI * 2;
+        var r = tube * (1 + Forme.flou(0.035));
+        var cv = Math.cos(v) * r, sv = Math.sin(v) * r;
+        var P = R.P[k], N = R.N[k], B = R.B[k];
+        o[0] = P[0] + N[0] * cv + B[0] * sv;
+        o[1] = P[1] + N[1] * cv + B[1] * sv;
+        o[2] = P[2] + N[2] * cv + B[2] * sv;
+        return (1 - Math.cos(v)) * 0.5;
+      }, Forme.rampe);
+    },
+
+    dessine: function (env, phase, p, cue) {
+      forme.rendre(env, {
+        n: p.pts * 1000,
+        angle: phase * Math.PI * 2,
+        inclinaison: 0.42,
+        cue: cue,
+        gain: 5.4,
+        cadre: 0.94
+      });
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/10-mobius.js */
+/* n° 10 — Ruban de Möbius
+ *
+ * A surface with one side and one edge, spun without depth cues so it is also a
+ * surface with no determinable direction of rotation.
+ *
+ * Colour runs on |v|, the *unsigned* distance from the centre line. Signing it
+ * would be the obvious choice and it is wrong: after one turn the strip comes
+ * back with v inverted, so a signed ramp tears open at the seam. The unsigned
+ * one closes cleanly and, as it happens, draws the single edge — which is the
+ * property worth showing.
+ */
+(function () {
+  "use strict";
+
+  var MAX = 52000;
+  var forme = null;
+
+  ILLUSIONS.push({
+    id: "mobius",
+    index: "N° 10",
+    nom: "Ruban de Möbius",
+    question: "Dans quel sens tourne ce ruban ?",
+    duree: 11,
+    params: [
+      { id: "large", nom: "Largeur", min: 15, max: 60, val: 38, div: 100 },
+      { id: "torsions", nom: "Demi-torsions", min: 1, max: 5, val: 1 },
+      { id: "pts", nom: "Densité", min: 12, max: 52, val: 38, mult: 1000, suffixe: " pts" }
+    ],
+
+    init: function (env, p) {
+      var w = p.large / 100;
+      var k = p.torsions;
+      forme = new Forme(MAX);
+      forme.construire(function (i, o) {
+        var u = Math.random() * Math.PI * 2;
+        var v = (Math.random() * 2 - 1) * (1 + Forme.flou(0.02));
+        var d = v * w;
+        var demi = k * u / 2;
+        var rayon = 1 + d * Math.cos(demi);
+        o[0] = rayon * Math.cos(u);
+        o[1] = rayon * Math.sin(u);
+        o[2] = d * Math.sin(demi);
+        // Unsigned: the strip returns with v flipped, so a signed ramp would tear.
+        return Math.min(1, Math.abs(v));
+      }, Forme.rampe);
+    },
+
+    dessine: function (env, phase, p, cue) {
+      forme.rendre(env, {
+        n: p.pts * 1000,
+        angle: phase * Math.PI * 2,
+        inclinaison: 0.5,
+        cue: cue,
+        gain: 5.6,
+        cadre: 0.9
+      });
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/11-sphere.js */
+/* n° 11 — Sphère de points
+ *
+ * The bare case. No shape at all to admire — the silhouette is a motionless
+ * circle from beginning to end, and only the dots move. What is left is the
+ * mechanism on its own: the near surface sweeps one way, the far surface the
+ * other, and nothing says which is which.
+ *
+ * This is the canonical structure-from-motion stimulus of the perception
+ * literature, and it belongs in the series as a control: if it lands as hard as
+ * the knot, the appeal is the ambiguity itself. If it falls flat, what carries
+ * the others is their form, and that changes what the page should be.
+ *
+ * Points are placed uniformly in area — sampling the polar angle directly would
+ * pile them at the poles and hand the eye a landmark to track.
+ */
+(function () {
+  "use strict";
+
+  var MAX = 4000;
+  var forme = null;
+
+  ILLUSIONS.push({
+    id: "sphere",
+    index: "N° 11",
+    nom: "Sphère de points",
+    question: "La face avant part-elle à gauche ou à droite ?",
+    duree: 9,
+    params: [
+      { id: "pts", nom: "Points", min: 3, max: 40, val: 16, mult: 100, suffixe: " pts" },
+      { id: "taille", nom: "Taille des points", min: 10, max: 60, val: 28, div: 10 }
+    ],
+
+    init: function (env, p) {
+      forme = new Forme(MAX);
+      forme.construire(function (i, o) {
+        // Uniform in area: cos of the polar angle is what must be uniform.
+        var cz = Math.random() * 2 - 1;
+        var s = Math.sqrt(1 - cz * cz);
+        var th = Math.random() * Math.PI * 2;
+        var r = 1;
+        o[0] = r * s * Math.cos(th);
+        o[1] = r * cz;
+        o[2] = r * s * Math.sin(th);
+        // Flat colour. Any ramp fixed to the surface would rotate with it and
+        // hand the eye a landmark to track, which is the one thing that would
+        // resolve the ambiguity.
+        return 0.86;
+      }, Forme.rampe);
+    },
+
+    dessine: function (env, phase, p, cue) {
+      forme.rendre(env, {
+        n: p.pts * 100,
+        angle: phase * Math.PI * 2,
+        inclinaison: 0,
+        cue: cue,
+        gain: 3.4,
+        rayon: p.taille / 10,
+        cadre: 0.88
+      });
     }
   });
 })();
