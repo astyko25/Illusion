@@ -35,6 +35,7 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 09 | Nœud de trèfle | profondeur — quel brin passe devant reste indécidable | 11 s | 33 s |
 | n° 10 | Ruban de Möbius | profondeur — une face, un bord, aucun sens de rotation | 11 s | 33 s |
 | n° 11 | Sphère de points | tout sauf le mécanisme : la silhouette ne bouge jamais | 9 s | 36 s |
+| n° 12 | La tour Eiffel | profondeur — un objet familier reste pourtant indécidable | 12 s | 36 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -68,6 +69,11 @@ fausses, et la page le prouve dans la seconde moitié de la boucle.
 Les n° 06 à 08 ont été choisies pour leur robustesse : la quasi-totalité des
 gens les perçoivent, contrairement à la dérive périphérique du n° 04.
 
+Le n° 12 lève le doute sur la familiarité : un objet reconnaissable verrouille
+d'ordinaire une perception bistable sur sa lecture attendue, mais pas ici. La
+tour tourne autour de son axe vertical, et les deux lectures la laissent
+debout — le préjugé de gravité n'a aucune prise sur le sens de rotation.
+
 Les n° 09 à 11 forment un banc d'essai. Toute forme 3D rendue sans indice de
 profondeur devient bistable, donc `engine/forme.js` mutualise l'opération et une
 nouvelle illusion se réduit à sa paramétrisation. Le n° 11 y sert de témoin :
@@ -79,7 +85,7 @@ il isole le mécanisme seul.
 ```
 engine/
   fonts.css     Archivo 400/800 + IBM Plex Mono 500, inlinés en base64
-  splat.js      rendu par accumulation pour les nuages de points
+  splat.js      rendu par accumulation, tampon rectangulaire
   forme.js      nuage 3D tournant sans indice de profondeur, mutualisé
   stage.js      canvas, cadre de marque, horloge déterministe
 illusions/

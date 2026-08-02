@@ -38,7 +38,13 @@
     this.cx = this.W / 2;
     this.cy = Math.round(this.H * 0.525);
 
-    this.splat = new Splatter(this.box);
+    // The point-cloud buffer spans the whole free band, not a square: elongated
+    // subjects — a tower, a mast — would otherwise be scaled to fit a width they
+    // never use, and lose a fifth of their height for nothing.
+    this.hautSafe = Math.round(this.H * 0.235);
+    this.splatW = this.W;
+    this.splatH = Math.round(this.H * 0.855) - this.hautSafe;
+    this.splat = new Splatter(this.splatW, this.splatH);
     this.scene = null;
     this.params = {};
     this.override = 0;          // studio depth toggle, independent of the timeline
@@ -61,14 +67,14 @@
     return {
       ctx: this.ctx, W: this.W, H: this.H,
       splat: this.splat, box: this.box,
+      splatW: this.splatW, splatH: this.splatH,
       cx: this.cx, cy: this.cy,
       palette: PALETTE,
       // Vertical band left free by the question block and the caption zone.
       safe: { haut: Math.round(this.H * 0.235), bas: Math.round(this.H * 0.855) },
       // Paste the point-cloud buffer into the specimen well.
       blit: function () {
-        self.ctx.drawImage(self.splat.canvas,
-          Math.round(self.cx - self.box / 2), Math.round(self.cy - self.box / 2));
+        self.ctx.drawImage(self.splat.canvas, 0, self.hautSafe);
       }
     };
   };

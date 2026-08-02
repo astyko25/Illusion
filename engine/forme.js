@@ -33,27 +33,33 @@
     this.cr = new Float32Array(max);
     this.cg = new Float32Array(max);
     this.cb = new Float32Array(max);
-    this.span = 1;
+    this.spanXZ = 1;     // horizontal reach, invariant under the spin
+    this.spanY = 1;
   }
 
   /* echant(i, out) writes x, y, z into out and returns a value in [0,1];
      rampe(t, col) turns that value into an emissive colour. */
   Forme.prototype.construire = function (echant, rampe) {
-    var out = [0, 0, 0], col = [0, 0, 0], span = 0;
+    var out = [0, 0, 0], col = [0, 0, 0], sxz = 0, sy = 0;
     for (var i = 0; i < this.max; i++) {
       var t = echant(i, out);
       this.px[i] = out[0]; this.py[i] = out[1]; this.pz[i] = out[2];
-      var d = Math.sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]);
-      if (d > span) span = d;
+      // Spinning about the vertical sweeps x and z through each other, so the
+      // horizontal reach is their common radius; the height is independent.
+      var d = Math.sqrt(out[0] * out[0] + out[2] * out[2]);
+      if (d > sxz) sxz = d;
+      var a = out[1] < 0 ? -out[1] : out[1];
+      if (a > sy) sy = a;
       rampe(t, col);
       this.cr[i] = col[0]; this.cg[i] = col[1]; this.cb[i] = col[2];
     }
-    this.span = span || 1;
+    this.spanXZ = sxz || 1;
+    this.spanY = sy || 1;
     return this;
   };
 
   Forme.prototype.rendre = function (env, o) {
-    var sp = env.splat, S = env.box;
+    var sp = env.splat;
     sp.gain = o.gain == null ? 5.5 : o.gain;
     sp.setTint(o.cool == null ? 0.34 : o.cool, o.warm == null ? 0.18 : o.warm);
     sp.begin();
@@ -62,9 +68,10 @@
     var C = Math.cos(o.angle), Sn = Math.sin(o.angle);
     var inc = o.inclinaison || 0;
     var ci = Math.cos(inc), si = Math.sin(inc);
-    var scale = S / (2 * this.span) * (o.cadre == null ? 0.92 : o.cadre);
-    var c = S / 2;
-    var invZ = 1 / this.span;
+    var cadre = o.cadre == null ? 0.92 : o.cadre;
+    var scale = Math.min(sp.w / (2 * this.spanXZ), sp.h / (2 * this.spanY)) * cadre;
+    var cx = sp.w / 2, cy = sp.h / 2;
+    var invZ = 1 / this.spanXZ;
     var out = [0, 0, 0];
     var cue = o.cue || 0;
     // Sparse clouds need points that read as points. A single bilinear splat is
@@ -78,7 +85,7 @@
       var yr = y * ci - zr * si;
       zr = y * si + zr * ci;
       Splatter.cue(out, this.cr[i], this.cg[i], this.cb[i], zr * invZ, cue);
-      var sx = c + xr * scale, sy = c - yr * scale;
+      var sx = cx + xr * scale, sy = cy - yr * scale;
       if (noyau) {
         for (var k = 0; k < noyau.length; k += 2) {
           sp.add(sx + noyau[k], sy + noyau[k + 1], out[0], out[1], out[2]);

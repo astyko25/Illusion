@@ -12,14 +12,17 @@
 (function (global) {
   "use strict";
 
-  function Splatter(size) {
+  function Splatter(w, h) {
+    h = h || w;
     this.canvas = document.createElement("canvas");
-    this.canvas.width = this.canvas.height = size;
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.ctx = this.canvas.getContext("2d", { alpha: false });
-    this.size = size;
+    this.w = w;
+    this.h = h;
 
-    var n = size * size;
-    this.img = this.ctx.createImageData(size, size);
+    var n = w * h;
+    this.img = this.ctx.createImageData(w, h);
     this.data = this.img.data;
     for (var i = 3; i < this.data.length; i += 4) this.data[i] = 255;
 
@@ -30,16 +33,16 @@
     this.frameId = 1;
 
     this.gain = 6;
-    this.tintR = new Float32Array(size);
-    this.tintB = new Float32Array(size);
+    this.tintR = new Float32Array(w);
+    this.tintB = new Float32Array(w);
     this.setTint(0, 0);
   }
 
   /* Screen-space tint. It never varies with depth, so it adds atmosphere
      without leaking the direction of rotation. */
   Splatter.prototype.setTint = function (cool, warm) {
-    for (var x = 0; x < this.size; x++) {
-      var f = this.size > 1 ? x / (this.size - 1) : 0;
+    for (var x = 0; x < this.w; x++) {
+      var f = this.w > 1 ? x / (this.w - 1) : 0;
       this.tintB[x] = 1 + (1 - f) * cool;
       this.tintR[x] = 1 + f * warm;
     }
@@ -56,16 +59,16 @@
   };
 
   Splatter.prototype.add = function (sx, sy, r, g, b) {
-    var S = this.size;
+    var W = this.w;
     var x0 = sx | 0, y0 = sy | 0;
-    if (x0 < 0 || y0 < 0 || x0 >= S - 1 || y0 >= S - 1) return;
+    if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= this.h - 1) return;
     var ax = sx - x0, ay = sy - y0;
     var iax = 1 - ax, iay = 1 - ay;
-    var base = y0 * S + x0;
+    var base = y0 * W + x0;
     this._one(base, iax * iay, r, g, b);
     this._one(base + 1, ax * iay, r, g, b);
-    this._one(base + S, iax * ay, r, g, b);
-    this._one(base + S + 1, ax * ay, r, g, b);
+    this._one(base + W, iax * ay, r, g, b);
+    this._one(base + W + 1, ax * ay, r, g, b);
   };
 
   Splatter.prototype._one = function (idx, w, r, g, b) {
@@ -81,11 +84,11 @@
   };
 
   Splatter.prototype.end = function () {
-    var acc = this.acc, data = this.data, S = this.size, gain = this.gain;
+    var acc = this.acc, data = this.data, W = this.w, gain = this.gain;
     var tintR = this.tintR, tintB = this.tintB;
     for (var t = 0; t < this.count; t++) {
       var idx = this.touched[t];
-      var col = idx % S;
+      var col = idx % W;
       var a = idx * 3;
       var ar = acc[a] * gain * tintR[col];
       var ag = acc[a + 1] * gain;

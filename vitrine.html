@@ -175,14 +175,17 @@
 (function (global) {
   "use strict";
 
-  function Splatter(size) {
+  function Splatter(w, h) {
+    h = h || w;
     this.canvas = document.createElement("canvas");
-    this.canvas.width = this.canvas.height = size;
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.ctx = this.canvas.getContext("2d", { alpha: false });
-    this.size = size;
+    this.w = w;
+    this.h = h;
 
-    var n = size * size;
-    this.img = this.ctx.createImageData(size, size);
+    var n = w * h;
+    this.img = this.ctx.createImageData(w, h);
     this.data = this.img.data;
     for (var i = 3; i < this.data.length; i += 4) this.data[i] = 255;
 
@@ -193,16 +196,16 @@
     this.frameId = 1;
 
     this.gain = 6;
-    this.tintR = new Float32Array(size);
-    this.tintB = new Float32Array(size);
+    this.tintR = new Float32Array(w);
+    this.tintB = new Float32Array(w);
     this.setTint(0, 0);
   }
 
   /* Screen-space tint. It never varies with depth, so it adds atmosphere
      without leaking the direction of rotation. */
   Splatter.prototype.setTint = function (cool, warm) {
-    for (var x = 0; x < this.size; x++) {
-      var f = this.size > 1 ? x / (this.size - 1) : 0;
+    for (var x = 0; x < this.w; x++) {
+      var f = this.w > 1 ? x / (this.w - 1) : 0;
       this.tintB[x] = 1 + (1 - f) * cool;
       this.tintR[x] = 1 + f * warm;
     }
@@ -219,16 +222,16 @@
   };
 
   Splatter.prototype.add = function (sx, sy, r, g, b) {
-    var S = this.size;
+    var W = this.w;
     var x0 = sx | 0, y0 = sy | 0;
-    if (x0 < 0 || y0 < 0 || x0 >= S - 1 || y0 >= S - 1) return;
+    if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= this.h - 1) return;
     var ax = sx - x0, ay = sy - y0;
     var iax = 1 - ax, iay = 1 - ay;
-    var base = y0 * S + x0;
+    var base = y0 * W + x0;
     this._one(base, iax * iay, r, g, b);
     this._one(base + 1, ax * iay, r, g, b);
-    this._one(base + S, iax * ay, r, g, b);
-    this._one(base + S + 1, ax * ay, r, g, b);
+    this._one(base + W, iax * ay, r, g, b);
+    this._one(base + W + 1, ax * ay, r, g, b);
   };
 
   Splatter.prototype._one = function (idx, w, r, g, b) {
@@ -244,11 +247,11 @@
   };
 
   Splatter.prototype.end = function () {
-    var acc = this.acc, data = this.data, S = this.size, gain = this.gain;
+    var acc = this.acc, data = this.data, W = this.w, gain = this.gain;
     var tintR = this.tintR, tintB = this.tintB;
     for (var t = 0; t < this.count; t++) {
       var idx = this.touched[t];
-      var col = idx % S;
+      var col = idx % W;
       var a = idx * 3;
       var ar = acc[a] * gain * tintR[col];
       var ag = acc[a + 1] * gain;
@@ -325,7 +328,13 @@
     this.cx = this.W / 2;
     this.cy = Math.round(this.H * 0.525);
 
-    this.splat = new Splatter(this.box);
+    // The point-cloud buffer spans the whole free band, not a square: elongated
+    // subjects — a tower, a mast — would otherwise be scaled to fit a width they
+    // never use, and lose a fifth of their height for nothing.
+    this.hautSafe = Math.round(this.H * 0.235);
+    this.splatW = this.W;
+    this.splatH = Math.round(this.H * 0.855) - this.hautSafe;
+    this.splat = new Splatter(this.splatW, this.splatH);
     this.scene = null;
     this.params = {};
     this.override = 0;          // studio depth toggle, independent of the timeline
@@ -348,14 +357,14 @@
     return {
       ctx: this.ctx, W: this.W, H: this.H,
       splat: this.splat, box: this.box,
+      splatW: this.splatW, splatH: this.splatH,
       cx: this.cx, cy: this.cy,
       palette: PALETTE,
       // Vertical band left free by the question block and the caption zone.
       safe: { haut: Math.round(this.H * 0.235), bas: Math.round(this.H * 0.855) },
       // Paste the point-cloud buffer into the specimen well.
       blit: function () {
-        self.ctx.drawImage(self.splat.canvas,
-          Math.round(self.cx - self.box / 2), Math.round(self.cy - self.box / 2));
+        self.ctx.drawImage(self.splat.canvas, 0, self.hautSafe);
       }
     };
   };
@@ -527,27 +536,33 @@
     this.cr = new Float32Array(max);
     this.cg = new Float32Array(max);
     this.cb = new Float32Array(max);
-    this.span = 1;
+    this.spanXZ = 1;     // horizontal reach, invariant under the spin
+    this.spanY = 1;
   }
 
   /* echant(i, out) writes x, y, z into out and returns a value in [0,1];
      rampe(t, col) turns that value into an emissive colour. */
   Forme.prototype.construire = function (echant, rampe) {
-    var out = [0, 0, 0], col = [0, 0, 0], span = 0;
+    var out = [0, 0, 0], col = [0, 0, 0], sxz = 0, sy = 0;
     for (var i = 0; i < this.max; i++) {
       var t = echant(i, out);
       this.px[i] = out[0]; this.py[i] = out[1]; this.pz[i] = out[2];
-      var d = Math.sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]);
-      if (d > span) span = d;
+      // Spinning about the vertical sweeps x and z through each other, so the
+      // horizontal reach is their common radius; the height is independent.
+      var d = Math.sqrt(out[0] * out[0] + out[2] * out[2]);
+      if (d > sxz) sxz = d;
+      var a = out[1] < 0 ? -out[1] : out[1];
+      if (a > sy) sy = a;
       rampe(t, col);
       this.cr[i] = col[0]; this.cg[i] = col[1]; this.cb[i] = col[2];
     }
-    this.span = span || 1;
+    this.spanXZ = sxz || 1;
+    this.spanY = sy || 1;
     return this;
   };
 
   Forme.prototype.rendre = function (env, o) {
-    var sp = env.splat, S = env.box;
+    var sp = env.splat;
     sp.gain = o.gain == null ? 5.5 : o.gain;
     sp.setTint(o.cool == null ? 0.34 : o.cool, o.warm == null ? 0.18 : o.warm);
     sp.begin();
@@ -556,9 +571,10 @@
     var C = Math.cos(o.angle), Sn = Math.sin(o.angle);
     var inc = o.inclinaison || 0;
     var ci = Math.cos(inc), si = Math.sin(inc);
-    var scale = S / (2 * this.span) * (o.cadre == null ? 0.92 : o.cadre);
-    var c = S / 2;
-    var invZ = 1 / this.span;
+    var cadre = o.cadre == null ? 0.92 : o.cadre;
+    var scale = Math.min(sp.w / (2 * this.spanXZ), sp.h / (2 * this.spanY)) * cadre;
+    var cx = sp.w / 2, cy = sp.h / 2;
+    var invZ = 1 / this.spanXZ;
     var out = [0, 0, 0];
     var cue = o.cue || 0;
     // Sparse clouds need points that read as points. A single bilinear splat is
@@ -572,7 +588,7 @@
       var yr = y * ci - zr * si;
       zr = y * si + zr * ci;
       Splatter.cue(out, this.cr[i], this.cg[i], this.cb[i], zr * invZ, cue);
-      var sx = c + xr * scale, sy = c - yr * scale;
+      var sx = cx + xr * scale, sy = cy - yr * scale;
       if (noyau) {
         for (var k = 0; k < noyau.length; k += 2) {
           sp.add(sx + noyau[k], sy + noyau[k + 1], out[0], out[1], out[2]);
@@ -671,7 +687,8 @@
     },
 
     dessine: function (env, phase, p, cue) {
-      var sp = env.splat, S = env.box;
+      var sp = env.splat;
+      var SW = env.splatW, SH = env.splatH;
       sp.gain = 6;
       sp.setTint(0.38, 0.20);
       sp.begin();
@@ -679,8 +696,8 @@
       var tube = p.tube / 100;
       var n = p.pts * 1000;
       var span = 1 + tube;
-      var scale = S / (2 * span) * 0.90;
-      var o = S / 2;
+      var scale = Math.min(SW, SH) / (2 * span) * 0.90;
+      var ox = SW / 2, oy = SH / 2;
       var dens = 1 / (1 + tube);
       var ang = phase * Math.PI * 2;
       var C = Math.cos(ang), Sn = Math.sin(ang);
@@ -697,7 +714,7 @@
         // to sampling that density and stays correct as the tube resizes.
         var q = rho * dens;
         Splatter.cue(out, pr[i] * q, pg[i] * q, pb[i] * q, z / span, cue);
-        sp.add(o + xr * scale, o - y * scale, out[0], out[1], out[2]);
+        sp.add(ox + xr * scale, oy - y * scale, out[0], out[1], out[2]);
       }
 
       sp.end();
@@ -899,7 +916,8 @@
     },
 
     dessine: function (env, phase, p, cue) {
-      var sp = env.splat, S = env.box;
+      var sp = env.splat;
+      var SW = env.splatW, SH = env.splatH;
       sp.gain = 5.2;
       sp.setTint(0.30, 0.16);
       sp.begin();
@@ -911,8 +929,8 @@
       // classically drawn. Applied after the spin, never animated.
       var TX = 0.34, cx2 = Math.cos(TX), sx2 = Math.sin(TX);
       var span = 1.9;
-      var scale = S / (2 * span) * 0.92;
-      var o = S / 2;
+      var scale = Math.min(SW, SH) / (2 * span) * 0.92;
+      var ox = SW / 2, oy = SH / 2;
 
       for (var i = 0; i < n; i++) {
         var x = ex[i], y = ey[i], z = ez[i];
@@ -923,7 +941,7 @@
 
         var m = em[i];
         Splatter.cue(out, 0.30 * m, 0.86 * m, 0.52 * m, zr / span, cue);
-        sp.add(o + xr * scale, o - yr * scale, out[0], out[1], out[2]);
+        sp.add(ox + xr * scale, oy - yr * scale, out[0], out[1], out[2]);
       }
 
       sp.end();
@@ -1927,6 +1945,203 @@
         gain: 3.4,
         rayon: p.taille / 10,
         cadre: 0.88
+      });
+    }
+  });
+})();
+</script>
+<script>
+/* illusions/12-eiffel.js */
+/* n° 12 — La tour Eiffel
+ *
+ * A recognisable object, spun without depth cues. Familiarity was the obvious
+ * worry — a known shape usually locks a bistable percept onto its expected
+ * reading — but it costs nothing here: the tower turns about its own vertical
+ * axis, and both readings leave it standing. The prior about gravity has no
+ * grip on the direction of rotation.
+ *
+ * The structure is built as a skeleton of segments rather than a surface: four
+ * curved corner legs, lattice bracing across each face, the platform belts, the
+ * four arches and the mast. Points are then drawn along the segments, weighted
+ * by length so the density stays even. The same machinery takes any latticed
+ * structure — a bridge, a pylon, a gantry.
+ *
+ * The profile follows the real dimensions, interpolated on the logarithm of the
+ * half-width: the tower's silhouette is close to exponential, and interpolating
+ * the width directly gives visibly straight legs.
+ */
+(function () {
+  "use strict";
+
+  var MAX = 46000;
+  var ECHELLE = 150;          // metres per unit; the tower is centred on 150 m
+  var forme = null;
+
+  // (height, half-width) in metres, from the real structure
+  var PROFIL = [[0, 62.5], [57, 35], [115, 20], [196, 13], [276, 8], [300, 6.2]];
+
+  function demiLargeur(h) {
+    if (h <= PROFIL[0][0]) return PROFIL[0][1];
+    for (var i = 1; i < PROFIL.length; i++) {
+      if (h <= PROFIL[i][0]) {
+        var a = PROFIL[i - 1], b = PROFIL[i];
+        var t = (h - a[0]) / (b[0] - a[0]);
+        // Interpolating log(w) keeps the legs curved, as they are.
+        return Math.exp(Math.log(a[1]) + (Math.log(b[1]) - Math.log(a[1])) * t);
+      }
+    }
+    return PROFIL[PROFIL.length - 1][1];
+  }
+
+  var ETAGE1 = 57;
+  var BAS = [0, 14, 28, 42, ETAGE1];
+  var HAUT = [ETAGE1, 75, 95, 115, 140, 168, 196, 224, 252, 276, 290, 300];
+  var PLATEFORMES = [57, 115, 276];
+
+  // Half-size of one leg's own square section. Below the first platform the
+  // tower is four independent lattice piers, each a truss in its own right —
+  // modelling that span as a single cage is what turned the base to mush.
+  function pile(h) { return 8.6 + (5.4 - 8.6) * (h / ETAGE1); }
+
+  function construitSegments() {
+    var S = [];
+    function seg(ax, ay, az, bx, by, bz, r, t) {
+      var dx = bx - ax, dy = by - ay, dz = bz - az;
+      var L = Math.hypot(dx, dy, dz);
+      if (L < 1e-6) return;
+      S.push([ax, ay, az, dx, dy, dz, r, t, L]);
+    }
+    var SIGNES = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+    function coins(h) {
+      var w = demiLargeur(h);
+      return SIGNES.map(function (s) { return [s[0] * w, h, s[1] * w]; });
+    }
+    // The four uprights of one pier, at height h.
+    function montants(f, h) {
+      var w = demiLargeur(h), q = pile(h), s = SIGNES[f];
+      var cx = s[0] * w, cz = s[1] * w;
+      return [[cx - q, h, cz - q], [cx + q, h, cz - q],
+              [cx + q, h, cz + q], [cx - q, h, cz + q]];
+    }
+
+    // Lower third: four separate piers.
+    for (var i = 0; i < BAS.length - 1; i++) {
+      var b1 = BAS[i], b2 = BAS[i + 1];
+      for (var f = 0; f < 4; f++) {
+        var m1 = montants(f, b1), m2 = montants(f, b2);
+        for (var k = 0; k < 4; k++) {
+          var l = (k + 1) % 4;
+          seg(m1[k][0], m1[k][1], m1[k][2], m2[k][0], m2[k][1], m2[k][2], 1.5, 0.9);
+          seg(m1[k][0], m1[k][1], m1[k][2], m2[l][0], m2[l][1], m2[l][2], 0.6, 0.32);
+          seg(m1[l][0], m1[l][1], m1[l][2], m2[k][0], m2[k][1], m2[k][2], 0.6, 0.32);
+          seg(m2[k][0], m2[k][1], m2[k][2], m2[l][0], m2[l][1], m2[l][2], 0.7, 0.42);
+        }
+      }
+    }
+
+    // Above the first platform the four piers have merged into one cage.
+    for (var j = 0; j < HAUT.length - 1; j++) {
+      var h1 = HAUT[j], h2 = HAUT[j + 1];
+      var c1 = coins(h1), c2 = coins(h2);
+      for (var f2 = 0; f2 < 4; f2++) {
+        var g = (f2 + 1) % 4;
+        seg(c1[f2][0], c1[f2][1], c1[f2][2], c2[f2][0], c2[f2][1], c2[f2][2], 2.0, 0.92);
+        seg(c1[f2][0], c1[f2][1], c1[f2][2], c2[g][0], c2[g][1], c2[g][2], 0.8, 0.34);
+        seg(c1[g][0], c1[g][1], c1[g][2], c2[f2][0], c2[f2][1], c2[f2][2], 0.8, 0.34);
+        seg(c2[f2][0], c2[f2][1], c2[f2][2], c2[g][0], c2[g][1], c2[g][2], 0.9, 0.48);
+      }
+    }
+
+    // Platform belts: a few concentric rings with a little depth, so they read
+    // as slabs rather than as one more tie.
+    PLATEFORMES.forEach(function (h) {
+      var w = demiLargeur(h);
+      for (var k = 0; k < 4; k++) {
+        var e = w * (1.02 + k * 0.075);
+        var y = h + (k - 1.5) * 1.6;
+        var pts = [[e, y, e], [-e, y, e], [-e, y, -e], [e, y, -e]];
+        for (var f2 = 0; f2 < 4; f2++) {
+          var g2 = (f2 + 1) % 4;
+          seg(pts[f2][0], pts[f2][1], pts[f2][2], pts[g2][0], pts[g2][1], pts[g2][2], 1.5, 1.0);
+        }
+      }
+    });
+
+    // The four arches under the first platform: crown at the centre of each face.
+    var hPied = 26, hCle = 50;
+    var wArc = demiLargeur(hPied);
+    for (var f3 = 0; f3 < 4; f3++) {
+      var N = 16;
+      for (var j = 0; j < N; j++) {
+        var s0 = -1 + 2 * j / N, s1 = -1 + 2 * (j + 1) / N;
+        var y0 = hCle - (hCle - hPied) * s0 * s0;
+        var y1 = hCle - (hCle - hPied) * s1 * s1;
+        var a = arcPoint(f3, s0, wArc, y0), b = arcPoint(f3, s1, wArc, y1);
+        seg(a[0], a[1], a[2], b[0], b[1], b[2], 2.1, 0.88);
+      }
+    }
+
+    // Mast above the top platform.
+    for (var m = 0; m < 6; m++) {
+      var ya = 300 + m * 4, yb = 300 + (m + 1) * 4;
+      seg(0, ya, 0, 0, yb, 0, 1.4 - m * 0.16, 0.95);
+    }
+
+    return S;
+  }
+
+  function arcPoint(face, s, w, y) {
+    // s runs across one face; the face plane is fixed at ±w on the other axis.
+    var u = s * w;
+    if (face === 0) return [u, y, w];
+    if (face === 1) return [-w, y, u];
+    if (face === 2) return [u, y, -w];
+    return [w, y, u];
+  }
+
+  ILLUSIONS.push({
+    id: "eiffel",
+    index: "N° 12",
+    nom: "La tour Eiffel",
+    question: "Dans quel sens tourne la tour ?",
+    duree: 12,
+    params: [
+      { id: "pts", nom: "Densité", min: 10, max: 46, val: 34, mult: 1000, suffixe: " pts" },
+      { id: "grain", nom: "Grain", min: 2, max: 30, val: 9, div: 10 }
+    ],
+
+    init: function (env, p) {
+      var S = construitSegments();
+      // Length-weighted cumulative table: sampling segments uniformly would
+      // crowd the short members and starve the long legs.
+      var cum = new Float64Array(S.length);
+      var total = 0;
+      for (var i = 0; i < S.length; i++) { total += S[i][8]; cum[i] = total; }
+
+      var grain = p.grain / 10;
+      forme = new Forme(MAX);
+      forme.construire(function (k, o) {
+        var x = Math.random() * total;
+        var lo = 0, hi = S.length - 1;
+        while (lo < hi) { var mid = (lo + hi) >> 1; if (cum[mid] < x) lo = mid + 1; else hi = mid; }
+        var s = S[lo];
+        var u = Math.random();
+        var r = s[6] * grain;
+        o[0] = (s[0] + s[3] * u + Forme.flou(r)) / ECHELLE;
+        o[1] = (s[1] + s[4] * u + Forme.flou(r) - ECHELLE) / ECHELLE;
+        o[2] = (s[2] + s[5] * u + Forme.flou(r)) / ECHELLE;
+        return s[7];
+      }, Forme.rampe);
+    },
+
+    dessine: function (env, phase, p, cue) {
+      forme.rendre(env, {
+        n: p.pts * 1000,
+        angle: phase * Math.PI * 2,
+        inclinaison: 0.10,
+        cue: cue,
+        gain: 5.0,
+        cadre: 0.99
       });
     }
   });

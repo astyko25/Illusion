@@ -55,7 +55,8 @@
     },
 
     dessine: function (env, phase, p, cue) {
-      var sp = env.splat, S = env.box;
+      var sp = env.splat;
+      var SW = env.splatW, SH = env.splatH;
       sp.gain = 6;
       sp.setTint(0.38, 0.20);
       sp.begin();
@@ -63,8 +64,8 @@
       var tube = p.tube / 100;
       var n = p.pts * 1000;
       var span = 1 + tube;
-      var scale = S / (2 * span) * 0.90;
-      var o = S / 2;
+      var scale = Math.min(SW, SH) / (2 * span) * 0.90;
+      var ox = SW / 2, oy = SH / 2;
       var dens = 1 / (1 + tube);
       var ang = phase * Math.PI * 2;
       var C = Math.cos(ang), Sn = Math.sin(ang);
@@ -81,7 +82,7 @@
         // to sampling that density and stays correct as the tube resizes.
         var q = rho * dens;
         Splatter.cue(out, pr[i] * q, pg[i] * q, pb[i] * q, z / span, cue);
-        sp.add(o + xr * scale, o - y * scale, out[0], out[1], out[2]);
+        sp.add(ox + xr * scale, oy - y * scale, out[0], out[1], out[2]);
       }
 
       sp.end();

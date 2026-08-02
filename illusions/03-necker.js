@@ -56,7 +56,8 @@
     },
 
     dessine: function (env, phase, p, cue) {
-      var sp = env.splat, S = env.box;
+      var sp = env.splat;
+      var SW = env.splatW, SH = env.splatH;
       sp.gain = 5.2;
       sp.setTint(0.30, 0.16);
       sp.begin();
@@ -68,8 +69,8 @@
       // classically drawn. Applied after the spin, never animated.
       var TX = 0.34, cx2 = Math.cos(TX), sx2 = Math.sin(TX);
       var span = 1.9;
-      var scale = S / (2 * span) * 0.92;
-      var o = S / 2;
+      var scale = Math.min(SW, SH) / (2 * span) * 0.92;
+      var ox = SW / 2, oy = SH / 2;
 
       for (var i = 0; i < n; i++) {
         var x = ex[i], y = ey[i], z = ez[i];
@@ -80,7 +81,7 @@
 
         var m = em[i];
         Splatter.cue(out, 0.30 * m, 0.86 * m, 0.52 * m, zr / span, cue);
-        sp.add(o + xr * scale, o - yr * scale, out[0], out[1], out[2]);
+        sp.add(ox + xr * scale, oy - yr * scale, out[0], out[1], out[2]);
       }
 
       sp.end();
