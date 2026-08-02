@@ -36,6 +36,7 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 10 | Ruban de Möbius | profondeur — une face, un bord, aucun sens de rotation | 11 s | 33 s |
 | n° 11 | Sphère de points | tout sauf le mécanisme : la silhouette ne bouge jamais | 9 s | 36 s |
 | n° 12 | La tour Eiffel | profondeur — un objet familier reste pourtant indécidable | 12 s | 36 s |
+| n° 13 | Le visage | profondeur — mais le préjugé de visage refuse l'égalité des deux lectures | 12 s | 36 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -73,6 +74,15 @@ Le n° 12 lève le doute sur la familiarité : un objet reconnaissable verrouill
 d'ordinaire une perception bistable sur sa lecture attendue, mais pas ici. La
 tour tourne autour de son axe vertical, et les deux lectures la laissent
 debout — le préjugé de gravité n'a aucune prise sur le sens de rotation.
+
+Le n° 13 est le seul de la famille qui ne soit *pas* une pièce équilibrée. Pour
+toutes les autres formes, les deux lectures se valent et la perception dérive de
+l'une à l'autre. Pour un visage, le préjugé est si fort que la perception force
+la lecture convexe et tournée vers l'observateur — le même préjugé qui empêche
+un masque creux de paraître creux. Le visage semble donc refuser de se
+détourner. Il est procédural, sans photographie ni personne réelle : outre la
+question du droit à l'image, une image 2D ne porte aucune profondeur à
+reconstruire.
 
 Les n° 09 à 11 forment un banc d'essai. Toute forme 3D rendue sans indice de
 profondeur devient bistable, donc `engine/forme.js` mutualise l'opération et une
