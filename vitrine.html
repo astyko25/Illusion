@@ -2186,35 +2186,38 @@
    * therefore concentrated and brightened where features live, and the sockets
    * count as much as the nose: what the eye reads is the presence of detail,
    * not its sign. */
-  function relief(x, y, out) {
+  function relief(x, y, out, P) {
     var d = 0, s = 0, v;
+    var ec = P.ecart;
 
     // Nose. The one feature that must survive at every angle — it is what gives
     // the turning head a profile, and the profile is what says "face".
-    var wn = 0.075 + 0.055 * g(y + 0.38, 0.10);
-    if (y < 0.26) { v = 0.27 * g(x, wn) * g(y + 0.28, 0.24); d += v; s += v * 1.15; }
+    var wn = (0.075 + 0.055 * g(y + 0.38, 0.10)) * P.nezLarge;
+    if (y < 0.26) { v = 0.27 * P.nez * g(x, wn) * g(y + 0.28, 0.24); d += v; s += v * 1.15; }
 
     // Brow ridge, dipping over the bridge.
-    v = 0.055 * g(y - 0.16, 0.075) * g(x, 0.40) * (0.55 + 0.45 * Math.min(1, Math.abs(x) / 0.22));
+    v = 0.055 * P.arcades * g(y - 0.16, 0.075) * g(x, 0.40) *
+        (0.55 + 0.45 * Math.min(1, Math.abs(x) / 0.22));
     d += v; s += v * 2.6;
 
     // Eye sockets, each holding a globe.
-    v = 0.075 * (g(x - 0.26, 0.14) * g(y, 0.085) + g(x + 0.26, 0.14) * g(y, 0.085));
+    v = 0.075 * (g(x - ec, 0.14) * g(y, 0.085) + g(x + ec, 0.14) * g(y, 0.085));
     d -= v; s += v * 2.4;
-    v = 0.048 * (g(x - 0.26, 0.072) * g(y, 0.052) + g(x + 0.26, 0.072) * g(y, 0.052));
+    v = 0.048 * (g(x - ec, 0.072) * g(y, 0.052) + g(x + ec, 0.072) * g(y, 0.052));
     d += v; s += v * 3.4;
 
     // Cheekbones.
-    v = 0.045 * (g(x - 0.40, 0.18) * g(y + 0.22, 0.20) + g(x + 0.40, 0.18) * g(y + 0.22, 0.20));
+    v = 0.045 * P.pommettes *
+        (g(x - 0.40, 0.18) * g(y + 0.22, 0.20) + g(x + 0.40, 0.18) * g(y + 0.22, 0.20));
     d += v; s += v * 1.3;
 
     // Philtrum, then the lips with their crease.
     v = 0.022 * g(x, 0.045) * g(y + 0.47, 0.055); d -= v; s += v * 2.2;
-    v = 0.062 * g(y + 0.60, 0.078) * g(x, 0.22); d += v; s += v * 2.8;
+    v = 0.062 * P.levres * g(y + 0.60, 0.078 * P.levres) * g(x, 0.22); d += v; s += v * 2.8;
     v = 0.034 * g(y + 0.61, 0.020) * g(x, 0.20); d -= v; s += v * 4.0;
 
     // Chin.
-    v = 0.05 * g(y + 0.88, 0.12) * g(x, 0.18); d += v; s += v * 1.6;
+    v = 0.05 * P.menton * g(y + 0.88, 0.12) * g(x, 0.18 * P.machoire); d += v; s += v * 1.6;
 
     out[0] = d;
     out[1] = s;
@@ -2222,11 +2225,11 @@
 
   /* The face narrows into the jaw. The taper stops well above the chin: the
      ellipsoid is already closing there, and compounding the two gave a point
-     instead of a jaw. */
-  function fuseau(y) {
+     instead of a jaw. A square jaw is simply less taper. */
+  function fuseau(y, force) {
     if (y > -0.15) return 1;
     var t = Math.min(1, (-0.15 - y) / 0.60);
-    return 1 - 0.22 * t * t;
+    return 1 - force * t * t;
   }
 
   ILLUSIONS.push({
@@ -2235,24 +2238,41 @@
     nom: "Le visage",
     question: "Ce visage vous tourne-t-il le dos ?",
     duree: 12,
+    // Identity controls. Whether a point cloud can carry a *particular* face is
+    // exactly what these are for: if the medium cannot separate a broad head
+    // from a narrow one with a heavy brow, no likeness would survive it either.
     params: [
       { id: "pts", nom: "Densité", min: 15, max: 60, val: 55, mult: 1000, suffixe: " pts" },
-      { id: "relief", nom: "Relief", min: 40, max: 160, val: 100, div: 100 },
-      { id: "oreilles", nom: "Oreilles", min: 0, max: 1, val: 1, bool: true }
+      { id: "largeur", nom: "Largeur du crâne", min: 55, max: 85, val: 68, div: 100 },
+      { id: "machoire", nom: "Mâchoire carrée", min: 0, max: 40, val: 22, div: 100 },
+      { id: "nez", nom: "Nez", min: 40, max: 190, val: 100, div: 100 },
+      { id: "arcades", nom: "Arcades", min: 0, max: 260, val: 100, div: 100 },
+      { id: "levres", nom: "Lèvres", min: 30, max: 220, val: 100, div: 100 },
+      { id: "ecart", nom: "Écartement des yeux", min: 18, max: 34, val: 26, div: 100 }
     ],
 
     init: function (env, p) {
-      var A = 0.68, B = 1.0, C = 0.86;      // half width, height, depth
-      var k = p.relief / 100;
+      var A = p.largeur / 100, B = 1.0, C = 0.86;   // half width, height, depth
+      var mach = 0.40 - p.machoire / 100;            // less taper = squarer jaw
+      var P = {
+        nez: p.nez / 100,
+        nezLarge: 0.75 + (p.nez / 100) * 0.35,
+        arcades: p.arcades / 100,
+        levres: p.levres / 100,
+        pommettes: 1,
+        menton: 1,
+        machoire: 0.8 + (p.machoire / 100) * 1.4,
+        ecart: p.ecart / 100
+      };
       var R = [0, 0];
       forme = new Forme(MAX);
       forme.construire(function (i, o) {
-        if (p.oreilles && (i % 40) === 0) {
+        if ((i % 40) === 0) {
           // Ears: flattened discs on the sides, set back from the eye line.
           var side = (i % 80) === 0 ? 1 : -1;
           var a = Math.random() * Math.PI * 2;
           var rr = Math.sqrt(Math.random());
-          o[0] = side * (A * fuseau(0) * 0.99 + Forme.flou(0.02));
+          o[0] = side * (A * fuseau(0, mach) * 0.99 + Forme.flou(0.02));
           o[1] = 0.02 + rr * Math.cos(a) * 0.16;
           o[2] = -0.10 + rr * Math.sin(a) * 0.11;
           return 0.5;
@@ -2267,18 +2287,18 @@
           sv = Math.sqrt(1 - cv * cv);
           u = Math.random() * Math.PI * 2;
           nx = sv * Math.sin(u); ny = cv; nz = sv * Math.cos(u);
-          t = fuseau(ny);
+          t = fuseau(ny, mach);
           x = A * nx * t;
           y = B * ny;
           // Relief belongs to the front of the head, faded in with how squarely
           // the point faces forward.
           av = nz > 0 ? nz * nz : 0;
-          relief(x, y, R);
+          relief(x, y, R, P);
           sal = R[1] * av;
           if (Math.random() < 0.13 + sal * 3.8) break;
         }
 
-        var z = C * nz * (0.55 + 0.45 * t) + R[0] * k * av;
+        var z = C * nz * (0.55 + 0.45 * t) + R[0] * av;
         var j = 0.005;
         o[0] = x + Forme.flou(j);
         o[1] = y + Forme.flou(j);
@@ -2422,6 +2442,14 @@
     if (!s) throw new Error("illusion inconnue : " + id);
     choisit(s);
     playing = false;
+    return true;
+  };
+  /* Drive a scene's parameters from outside — used to render comparison sets
+     without touching the sliders one by one. */
+  window.__regle = function (vals) {
+    Object.keys(vals).forEach(function (k) { stage.params[k] = vals[k]; });
+    if (courant && courant.init) stage.reinit();
+    construitParams(courant);
     return true;
   };
   window.__frame = function (i, n) {

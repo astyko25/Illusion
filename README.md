@@ -75,6 +75,13 @@ d'ordinaire une perception bistable sur sa lecture attendue, mais pas ici. La
 tour tourne autour de son axe vertical, et les deux lectures la laissent
 debout — le préjugé de gravité n'a aucune prise sur le sens de rotation.
 
+Le n° 13 porte des **réglages d'identité** — largeur du crâne, mâchoire, nez,
+arcades, lèvres, écartement des yeux — pour répondre à une question précise : ce
+médium transporte-t-il un visage *particulier* ? Réponse mesurée : il sépare
+franchement les morphologies, mais il retire par construction la texture et le
+détail fin, qui sont l'essentiel de ce qui rend une personne reconnaissable. Il
+est bon pour un type de visage, douteux pour un portrait.
+
 Le n° 13 est le seul de la famille qui ne soit *pas* une pièce équilibrée. Pour
 toutes les autres formes, les deux lectures se valent et la perception dérive de
 l'une à l'autre. Pour un visage, le préjugé est si fort que la perception force

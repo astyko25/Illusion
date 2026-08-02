@@ -296,6 +296,14 @@
     playing = false;
     return true;
   };
+  /* Drive a scene's parameters from outside — used to render comparison sets
+     without touching the sliders one by one. */
+  window.__regle = function (vals) {
+    Object.keys(vals).forEach(function (k) { stage.params[k] = vals[k]; });
+    if (courant && courant.init) stage.reinit();
+    construitParams(courant);
+    return true;
+  };
   window.__frame = function (i, n) {
     phase = (i % n) / n;
     stage.dessine(phase);
