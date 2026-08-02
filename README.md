@@ -37,6 +37,13 @@ temps au basculement d'arriver. Comme le cycle se referme à l'image près, les
 répétitions sont une copie de flux — pas de réencodage, pas de perte, et un coût
 quasi nul.
 
+Le n° 04 est le seul dont l'effet ne se vérifie pas en mesurant des pixels : il
+n'existe que dans la perception. Ce qui se contrôle, c'est la conformité de la
+construction à la recette — tuiles carrées sur tous les anneaux, fond nettement
+plus clair que les tuiles noires, motif assez grand pour atteindre la vision
+périphérique. Les trois sont vérifiés ; l'effet lui-même varie selon les
+personnes et la distance de lecture.
+
 Le n° 05 choisit sa paire de cases en sondant l'image finie, avec l'égalité
 exacte des pixels comme contrainte : si aucune paire ne la satisfait, le rendu
 échoue au lieu de produire un post dont la légende serait fausse.
