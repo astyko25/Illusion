@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio — BISTABLE</title>
+<link rel="stylesheet" href="engine/fonts.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --void: #000; --abyss: #06090a; --slate: #10171a; --slate-2: #162024;
+    --hairline: #22302f; --ash: #7c8b85; --ash-dim: #4c5a56;
+    --bone: #e8f0ea; --lumen: #3ddc84; --citrine: #c8ff6a;
+    --mono: PlexMono, ui-monospace, Menlo, monospace;
+    --display: Archivo, "Helvetica Neue", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--abyss); color: var(--bone);
+    font-family: var(--display); -webkit-font-smoothing: antialiased;
+  }
+  .rig {
+    display: grid; gap: 28px; align-items: start;
+    grid-template-columns: 1fr; max-width: 1240px;
+    margin: 0 auto; padding: 26px clamp(14px, 3vw, 30px) 60px;
+  }
+  @media (min-width: 900px) { .rig { grid-template-columns: auto 1fr; gap: 38px; } }
+
+  .scene-wrap { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  canvas {
+    display: block; background: #000; border: 1px solid var(--hairline);
+    height: min(78vh, 860px); width: auto; max-width: 100%;
+  }
+  .meta {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ash-dim); text-align: center;
+  }
+
+  h1 {
+    margin: 0 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+  }
+  .sub {
+    margin: 0 0 22px; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ash);
+  }
+
+  .panneau {
+    background: var(--slate); border: 1px solid var(--hairline);
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .panneau > h2 {
+    margin: 0 0 14px; font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--lumen);
+  }
+
+  .liste { display: flex; flex-direction: column; gap: 6px; }
+  .liste button {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    width: 100%; text-align: left; padding: 10px 12px;
+    background: var(--slate-2); color: var(--ash); border: 1px solid var(--hairline);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .liste button em { font-style: normal; color: var(--ash-dim); }
+  .liste button:hover { color: var(--bone); border-color: var(--ash-dim); }
+  .liste button[aria-current="true"] {
+    color: var(--void); background: var(--lumen); border-color: var(--lumen);
+  }
+  .liste button[aria-current="true"] em { color: rgba(0,0,0,.6); }
+
+  .champ { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+  .champ:last-child { margin-bottom: 0; }
+  .tete {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .tete span { color: var(--ash); }
+  .tete output { color: var(--lumen); font-variant-numeric: tabular-nums; }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 16px;
+    margin: 0; background: transparent; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--hairline); }
+  input[type=range]::-moz-range-track { height: 1px; background: var(--hairline); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px;
+    background: var(--lumen); border: 0; border-radius: 50%;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 11px; height: 11px; background: var(--lumen); border: 0; border-radius: 50%;
+  }
+  input:focus-visible { outline: 1px solid var(--citrine); outline-offset: 3px; }
+
+  .rangee { display: flex; gap: 8px; }
+  .rangee button {
+    flex: 1; padding: 9px 8px; background: var(--slate-2); color: var(--ash);
+    border: 1px solid var(--hairline); font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .rangee button:hover { color: var(--bone); border-color: var(--ash-dim); }
+  .rangee button[aria-pressed="true"] {
+    color: var(--void); background: var(--lumen); border-color: var(--lumen);
+  }
+  .rangee button:focus-visible { outline: 1px solid var(--citrine); outline-offset: 2px; }
+
+  code.cmd {
+    display: block; padding: 11px 12px; background: var(--void);
+    border-left: 1px solid var(--lumen); font-family: var(--mono); font-size: 11px;
+    color: var(--bone); overflow-x: auto; white-space: nowrap;
+  }
+  .note {
+    margin: 10px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--ash);
+  }
+</style>
+</head>
+<body>
+<main class="rig">
+  <div class="scene-wrap">
+    <canvas id="cv" width="1080" height="1920"></canvas>
+    <p class="meta" id="meta">—</p>
+  </div>
+
+  <div>
+    <h1>Studio</h1>
+    <p class="sub">Bistable · Reels 1080 × 1920</p>
+
+    <section class="panneau">
+      <h2>Illusion</h2>
+      <div class="liste" id="liste"></div>
+    </section>
+
+    <section class="panneau">
+      <h2>Réglages</h2>
+      <div id="params"></div>
+    </section>
+
+    <section class="panneau">
+      <h2>Lecture</h2>
+      <div class="champ">
+        <label class="tete" for="scrub"><span>Position</span><output id="scrubOut">0,00</output></label>
+        <input type="range" id="scrub" min="0" max="999" value="0">
+      </div>
+      <div class="rangee">
+        <button id="play" aria-pressed="true">Pause</button>
+        <button id="reveal" aria-pressed="false">Révéler</button>
+      </div>
+    </section>
+
+    <section class="panneau">
+      <h2>Export</h2>
+      <code class="cmd" id="cmd">node export/render.mjs anneau</code>
+      <p class="note">
+        Produit un MP4 H.264 1080 × 1920 dans <code>export/sortie/</code>, prêt à publier.
+        <code>all</code> à la place d'un identifiant exporte toute la série.
+      </p>
+    </section>
+  </div>
+</main>
+
+<script src="engine/splat.js"></script>
+<script src="engine/stage.js"></script>
+<script src="illusions/01-anneau.js"></script>
+<script src="illusions/02-danseuse.js"></script>
+<script src="illusions/03-necker.js"></script>
+<script src="illusions/04-serpents.js"></script>
+<script src="illusions/05-damier.js"></script>
+<script>
+(function () {
+  "use strict";
+  var stage = new Stage(document.getElementById("cv"), 1080, 1920);
+  var elListe = document.getElementById("liste");
+  var elParams = document.getElementById("params");
+  var elScrub = document.getElementById("scrub");
+  var elScrubOut = document.getElementById("scrubOut");
+  var elMeta = document.getElementById("meta");
+  var elCmd = document.getElementById("cmd");
+  var btnPlay = document.getElementById("play");
+  var btnReveal = document.getElementById("reveal");
+
+  var phase = 0, playing = true, courant = null;
+  var exportMode = /[?&]export=1/.test(location.search);
+
+  function fmtVal(p, v) {
+    if (p.bool) return v ? "oui" : "non";
+    if (p.div) return (v / p.div).toFixed(2).replace(".", ",");
+    if (p.mult) return (v * p.mult).toLocaleString("fr-FR") + (p.suffixe || "");
+    return String(v);
+  }
+
+  function construitParams(scene) {
+    elParams.innerHTML = "";
+    (scene.params || []).forEach(function (p) {
+      var champ = document.createElement("div");
+      champ.className = "champ";
+      var id = "p_" + p.id;
+      champ.innerHTML =
+        '<label class="tete" for="' + id + '"><span>' + p.nom + '</span>' +
+        '<output id="' + id + '_o"></output></label>' +
+        '<input type="range" id="' + id + '" min="' + p.min + '" max="' + p.max +
+        '" value="' + stage.params[p.id] + '">';
+      elParams.appendChild(champ);
+      var input = champ.querySelector("input");
+      var out = champ.querySelector("output");
+      out.textContent = fmtVal(p, stage.params[p.id]);
+      input.addEventListener("input", function () {
+        stage.params[p.id] = +input.value;
+        out.textContent = fmtVal(p, +input.value);
+        if (scene.init) stage.reinit();
+        if (!playing) rends();
+      });
+    });
+    if (!(scene.params || []).length) {
+      elParams.innerHTML = '<p class="note" style="margin:0">Aucun réglage.</p>';
+    }
+  }
+
+  function choisit(scene) {
+    courant = scene;
+    stage.charge(scene);
+    construitParams(scene);
+    elCmd.textContent = "node export/render.mjs " + scene.id;
+    elMeta.textContent = scene.nom + " · " + scene.duree + " s · boucle continue";
+    Array.prototype.forEach.call(elListe.children, function (b) {
+      b.setAttribute("aria-current", String(b.dataset.id === scene.id));
+    });
+    phase = 0;
+    rends();
+  }
+
+  ILLUSIONS.forEach(function (scene) {
+    var b = document.createElement("button");
+    b.dataset.id = scene.id;
+    b.innerHTML = "<span>" + scene.nom + "</span><em>" + scene.index + "</em>";
+    b.addEventListener("click", function () { choisit(scene); });
+    elListe.appendChild(b);
+  });
+
+  function rends() {
+    stage.dessine(phase);
+    elScrub.value = Math.round(phase * 1000) % 1000;
+    elScrubOut.textContent = phase.toFixed(2).replace(".", ",");
+  }
+
+  elScrub.addEventListener("input", function () {
+    phase = +elScrub.value / 1000;
+    if (playing) { playing = false; btnPlay.setAttribute("aria-pressed", "false"); btnPlay.textContent = "Lecture"; }
+    rends();
+  });
+
+  btnPlay.addEventListener("click", function () {
+    playing = !playing;
+    btnPlay.setAttribute("aria-pressed", String(playing));
+    btnPlay.textContent = playing ? "Pause" : "Lecture";
+    last = 0;
+    if (playing) requestAnimationFrame(boucle);
+  });
+
+  btnReveal.addEventListener("click", function () {
+    stage.override = stage.override > 0 ? 0 : 1;
+    btnReveal.setAttribute("aria-pressed", String(stage.override > 0));
+    if (!playing) rends();
+  });
+
+  var last = 0;
+  function boucle(now) {
+    if (!last) last = now;
+    var dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    phase = (phase + dt / courant.duree) % 1;
+    rends();
+    if (playing) requestAnimationFrame(boucle);
+  }
+
+  /* Hooks for the headless exporter. Rendering is a pure function of phase, so
+     these produce exactly what the preview shows. */
+  window.__scenes = function () {
+    return ILLUSIONS.map(function (s) {
+      return { id: s.id, nom: s.nom, index: s.index, duree: s.duree, statique: !!s.statique };
+    });
+  };
+  window.__scene = function (id) {
+    var s = ILLUSIONS.filter(function (x) { return x.id === id; })[0];
+    if (!s) throw new Error("illusion inconnue : " + id);
+    choisit(s);
+    playing = false;
+    return true;
+  };
+  window.__frame = function (i, n) {
+    phase = (i % n) / n;
+    stage.dessine(phase);
+    return true;
+  };
+
+  document.fonts.ready.then(function () {
+    choisit(ILLUSIONS[0]);
+    window.__pret = true;
+    if (!exportMode) requestAnimationFrame(boucle);
+    else { playing = false; btnPlay.setAttribute("aria-pressed", "false"); btnPlay.textContent = "Lecture"; }
+  });
+})();
+</script>
+</body>
+</html>

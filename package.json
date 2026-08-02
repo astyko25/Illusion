@@ -1,0 +1,14 @@
+{
+  "name": "bistable",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Illusions d'optique interactives et export Reels 1080x1920",
+  "scripts": {
+    "export": "node export/render.mjs",
+    "export:all": "node export/render.mjs all"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

@@ -1,50 +1,95 @@
-# Illusion
+# BISTABLE
 
-Illusions d'optique interactives, rendues en direct dans le navigateur.
+Illusions d'optique rendues en direct dans le navigateur, et exportées en Reels
+Instagram 1080 × 1920 prêts à publier.
 
-## n° 01 — Anneau ambigu
+Aucune dépendance côté page : pas de build, pas de framework, pas de CDN. Les
+polices sont inlinées en woff2, donc le rendu est identique dans le navigateur,
+dans l'exportateur headless et derrière la CSP d'une page publiée.
 
-`index.html` — une page autonome, sans dépendance ni build.
+## Démarrer
 
-Un nuage de ~34 000 points décrit un **tore**, et surtout : il ne tourne pas sur
-son axe de symétrie, il **bascule autour de la verticale**. L'anneau s'ouvre en
-disque, se referme en ellipse, puis en sablier, et recommence.
+```bash
+npm install                      # playwright, pour l'export uniquement
+open studio.html                 # prévisualiser et régler
+node export/render.mjs anneau    # produire un MP4
+node export/render.mjs           # produire toute la série
+```
 
-L'axe n'est pas un détail — c'est tout le sujet. Une surface de révolution qui
-tourne sur son propre axe donne une image invariante : seul le grain se déplace,
-la silhouette ne bouge jamais, et il n'y a rien à inverser. C'est la bascule qui
-crée les deux lectures.
+L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
+`brew install ffmpeg`). Les fichiers atterrissent dans `export/sortie/`.
 
-L'illusion tient ensuite à ce qui a été retiré du rendu : **projection
-orthographique**, pas de perspective, pas d'ombre, et une luminosité strictement
-indépendante de la profondeur. Deux volumes 3D produisent alors exactement la
-même image animée — l'un basculant vers l'avant, l'autre vers l'arrière. Le
-cerveau tranche arbitrairement, puis bascule.
+## La série
 
-### Contrôles
+| | Illusion | Ce qui est retiré | Durée |
+| --- | --- | --- | --- |
+| n° 01 | Anneau ambigu | profondeur — un tore qui bascule autour de la verticale | 9 s |
+| n° 02 | Silhouette tournante | ombrage et occlusion — un corps en aplat | 6 s |
+| n° 03 | Cube de Necker | les arêtes cachées — aucune face n'est privilégiée | 10 s |
+| n° 04 | Serpents tournants | rien : l'image est fixe, la rotation est fabriquée par la rétine | 8 s |
+| n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 10 s |
 
-| Contrôle | Effet |
-| --- | --- |
-| Vitesse | tours par seconde |
-| Épaisseur | rayon du tube, de l'anneau fin à la bouée |
-| Densité | 6 000 à 60 000 points |
-| Imposer un sens | maintenir pour réintroduire un indice de profondeur et forcer la lecture |
-| Révéler la profondeur | supprime l'ambiguïté en permanence |
+Les n° 01 à 03 sont bistables — deux lectures également valides, et le cerveau
+bascule de l'une à l'autre. Les n° 04 et 05 ne sont pas ambiguës : elles sont
+fausses, et la page le prouve.
 
-Un glissement horizontal sur le spécimen le fait tourner à la main.
+## Architecture
 
-### Rendu
+```
+engine/
+  fonts.css     Archivo 400/800 + IBM Plex Mono 500, inlinés en base64
+  splat.js      rendu par accumulation pour les nuages de points
+  stage.js      canvas, cadre de marque, horloge déterministe
+illusions/
+  0*.js         une illusion par fichier, enregistrée dans window.ILLUSIONS
+studio.html     prévisualisation, réglages, position dans la boucle
+vitrine.html    le studio replié en un seul fichier autonome (généré)
+export/
+  render.mjs    Chromium headless -> images PNG -> MP4 H.264
+  vitrine.mjs   génère vitrine.html
+index.html      page longue consacrée à l'illusion n° 01
+```
 
-Le pipeline n'utilise ni WebGL ni `fillRect`. Chaque point est accumulé en
-bilinéaire dans un tampon flottant, puis compressé vers une `ImageData`. Seuls
-les pixels effectivement éclairés sont parcourus — la liste des pixels touchés à
-la frame précédente sert aussi à l'effacement, ce qui garde le coût proportionnel
-au nombre de points et non à la surface du canvas.
+### Le contrat d'une scène
 
-La compression tonale s'applique au canal le plus lumineux et met les deux autres
-à l'échelle du même facteur, pour que les zones denses saturent en couleur
-plutôt qu'en blanc.
+Une illusion dessine en **fonction pure de la position dans la boucle**, un
+nombre dans `[0,1)`. Rien ne lit l'horloge système. C'est ce qui permet à
+l'exportateur d'avancer image par image au lieu de filmer en temps réel : le
+résultat ne dépend pas de la vitesse de la machine, et la dernière image
+raccorde exactement la première. Vérifié en mesure — le pas 179 → 0 donne le
+même PSNR qu'un pas ordinaire.
 
-### Utilisation
+```js
+ILLUSIONS.push({
+  id: "anneau", index: "N° 01", nom: "Anneau ambigu",
+  question: "…",                       // incrustée en haut du Reel
+  duree: 9,                            // secondes pour une boucle
+  revele: { debut: 0.5, texte: "…" },  // facultatif : lève l'illusion en fin de boucle
+  params: [ { id: "tube", nom: "Épaisseur", min: 15, max: 80, val: 43, div: 100 } ],
+  init(env, p) {},                     // facultatif, rappelé à chaque changement de réglage
+  dessine(env, phase, p, indice) {}
+});
+```
 
-Ouvrir `index.html` dans un navigateur. C'est tout.
+`indice` monte de 0 à 1 quand la scène révèle sa profondeur — piloté par la
+boucle via `revele`, ou forcé depuis le studio.
+
+### Le rendu par points
+
+Les points sont accumulés en bilinéaire dans un tampon flottant puis compressés
+vers une `ImageData`. Seuls les pixels réellement éclairés sont parcourus : la
+liste des pixels de l'image précédente sert aussi à l'effacement, ce qui rend le
+coût proportionnel au nombre de points et non à la surface du canvas.
+
+La courbe tonale s'applique au canal le plus lumineux et met les deux autres à
+la même échelle, pour que les zones denses saturent en couleur plutôt qu'en
+blanc.
+
+## Ajouter une illusion
+
+1. Créer `illusions/06-machin.js` sur le modèle ci-dessus.
+2. L'ajouter aux `<script>` de `studio.html`.
+3. `node export/vitrine.mjs` pour régénérer la version autonome.
+
+Le cadre de marque — question, filets, signature — est appliqué par `stage.js`.
+Une scène n'a que son spécimen à dessiner.
