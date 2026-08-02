@@ -1,0 +1,805 @@
+<meta charset="utf-8">
+<title>Rotation ambiguë — illusion bistable</title>
+<style>
+  :root {
+    color-scheme: dark;
+
+    --void:    #000000;
+    --abyss:   #06090a;
+    --slate:   #10171a;
+    --slate-2: #162024;
+    --hairline:#22302f;
+    --ash:     #7c8b85;
+    --ash-dim: #4c5a56;
+    --bone:    #e4ede6;
+    --lumen:   #3ddc84;
+    --citrine: #c8ff6a;
+
+    --display: "Helvetica Neue", "Inter", "Segoe UI", system-ui, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+    --gap: clamp(28px, 5vw, 52px);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--abyss);
+    color: var(--bone);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .rig {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 76px) clamp(18px, 5vw, 40px) 64px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ash);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+  .eyebrow::before,
+  .eyebrow::after {
+    content: "";
+    width: 26px;
+    height: 1px;
+    background: var(--hairline);
+  }
+  @media (max-width: 430px) {
+    .eyebrow { font-size: 10px; letter-spacing: 0.16em; }
+    .eyebrow::before, .eyebrow::after { width: 14px; }
+  }
+
+  h1 {
+    margin: 0;
+    max-width: 18ch;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(30px, 6.6vw, 58px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  .dek {
+    margin: 0;
+    max-width: 46ch;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ash);
+    text-wrap: pretty;
+  }
+
+  /* ---------- stage ---------- */
+
+  .stage-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .stage {
+    position: relative;
+    width: min(560px, 92vw);
+    aspect-ratio: 0.74;
+    background: var(--void);
+    border: 1px solid var(--hairline);
+    touch-action: none;
+    cursor: grab;
+    overflow: hidden;
+  }
+  .stage:active { cursor: grabbing; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+
+  .tick {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    border: 1px solid var(--lumen);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .tick.tl { top: 9px;  left: 9px;  border-right: 0; border-bottom: 0; }
+  .tick.tr { top: 9px;  right: 9px; border-left: 0;  border-bottom: 0; }
+  .tick.bl { bottom: 9px; left: 9px;  border-right: 0; border-top: 0; }
+  .tick.br { bottom: 9px; right: 9px; border-left: 0;  border-top: 0; }
+
+  .readout {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 14px;
+    margin: 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    pointer-events: none;
+    transition: color 0.35s ease;
+  }
+  .readout.live { color: var(--citrine); }
+
+  .hint {
+    margin: 0;
+    text-align: center;
+    text-wrap: balance;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+  }
+
+  /* ---------- console ---------- */
+
+  .console {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 22px 34px;
+    padding: 24px clamp(18px, 3.5vw, 30px);
+    background: var(--slate);
+    border: 1px solid var(--hairline);
+  }
+
+  /* Six tracks so three sliders fill one row and the two button groups fill the
+     next, instead of auto-fit leaving a dead column. */
+  @media (min-width: 760px) {
+    .console { grid-template-columns: repeat(6, 1fr); }
+    .field { grid-column: span 2; }
+    .field.wide { grid-column: span 3; }
+  }
+
+  .field { display: flex; flex-direction: column; gap: 9px; }
+
+  .field-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .field-head span:first-child { color: var(--ash); }
+  .field-head output {
+    color: var(--lumen);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 1px;
+    background: var(--hairline);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 1px;
+    background: var(--hairline);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    margin-top: -5px;
+    background: var(--lumen);
+    border: 0;
+    border-radius: 50%;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    background: var(--lumen);
+    border: 0;
+    border-radius: 50%;
+  }
+  input[type="range"]:focus-visible { outline: 1px solid var(--citrine); outline-offset: 4px; }
+
+  .btn-row { display: flex; gap: 8px; }
+
+  button {
+    flex: 1;
+    padding: 9px 10px;
+    background: var(--slate-2);
+    color: var(--ash);
+    border: 1px solid var(--hairline);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  button:hover { color: var(--bone); border-color: var(--ash-dim); }
+  button:focus-visible { outline: 1px solid var(--citrine); outline-offset: 2px; }
+  /* Filled state is reserved for controls that alter the specimen. Transport
+     controls stay quiet so they never read as the primary action. */
+  #depth[aria-pressed="true"],
+  button.held {
+    color: var(--void);
+    background: var(--lumen);
+    border-color: var(--lumen);
+  }
+  #play { flex: 0 0 40%; color: var(--ash); }
+  #play:hover { color: var(--bone); }
+
+  /* ---------- notes ---------- */
+
+  .notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 30px 38px;
+    padding-top: 8px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .note h2 {
+    margin: 0 0 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--lumen);
+  }
+  .note p {
+    margin: 0 0 10px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--ash);
+    max-width: 60ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note strong { color: var(--bone); font-weight: 600; }
+
+  .eq {
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--slate);
+    border-left: 1px solid var(--lumen);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.85;
+    color: var(--bone);
+    overflow-x: auto;
+  }
+  .eq em { color: var(--ash); font-style: normal; }
+
+  footer {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; }
+  }
+</style>
+
+<main class="rig">
+  <header class="masthead">
+    <p class="eyebrow">Illusion bistable · n° 01</p>
+    <h1>Pouvez-vous inverser le sens de rotation par la pensée&nbsp;?</h1>
+    <p class="dek">
+      Rien dans cette image ne dit dans quel sens l'objet tourne. Les deux lectures sont
+      géométriquement exactes — votre cortex visuel en choisit une, puis bascule.
+    </p>
+  </header>
+
+  <section class="stage-wrap">
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <span class="tick tl"></span><span class="tick tr"></span>
+      <span class="tick bl"></span><span class="tick br"></span>
+      <p class="readout" id="readout">Sens réel — indéterminable</p>
+    </div>
+    <p class="hint">Glissez sur le spécimen pour le faire tourner à la main</p>
+  </section>
+
+  <section class="console" aria-label="Console de contrôle">
+    <div class="field">
+      <label class="field-head" for="speed">
+        <span>Vitesse</span><output id="speedOut">0,45 tr/s</output>
+      </label>
+      <input type="range" id="speed" min="0" max="140" value="45" aria-label="Vitesse de rotation">
+    </div>
+
+    <div class="field">
+      <label class="field-head" for="shape">
+        <span>Évasement</span><output id="shapeOut">0,35 · entonnoir</output>
+      </label>
+      <input type="range" id="shape" min="0" max="100" value="35" aria-label="Évasement des entonnoirs polaires">
+    </div>
+
+    <div class="field">
+      <label class="field-head" for="dens">
+        <span>Densité</span><output id="densOut">34 000 pts</output>
+      </label>
+      <input type="range" id="dens" min="6" max="60" value="34" aria-label="Nombre de points">
+    </div>
+
+    <div class="field wide">
+      <p class="field-head"><span>Imposer un sens</span><span id="assistOut">—</span></p>
+      <div class="btn-row">
+        <button type="button" id="ccw" aria-label="Imposer le sens antihoraire">◀ Antihoraire</button>
+        <button type="button" id="cw" aria-label="Imposer le sens horaire">Horaire ▶</button>
+      </div>
+    </div>
+
+    <div class="field wide">
+      <p class="field-head"><span>Chambre</span><span></span></p>
+      <div class="btn-row">
+        <button type="button" id="depth" aria-pressed="false">Révéler la profondeur</button>
+        <button type="button" id="play" aria-pressed="true">Pause</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <article class="note">
+      <h2>Pourquoi ça marche</h2>
+      <p>
+        Le rendu est en <strong>projection orthographique</strong> : aucune perspective, aucune
+        ombre, aucun flou, et les points du fond sont exactement aussi lumineux que ceux du
+        premier plan. Toute l'information de profondeur a été retirée.
+      </p>
+      <p>
+        Il reste donc deux volumes 3D qui produisent la même image animée — l'un tourne vers la
+        droite, l'autre vers la gauche. Le cerveau ne peut pas trancher, alors il parie. Et comme
+        pour le cube de Necker, le pari finit toujours par se retourner.
+      </p>
+    </article>
+
+    <article class="note">
+      <h2>Provoquer la bascule</h2>
+      <p>
+        Fixez un seul bord de la silhouette plutôt que le centre, ou fermez les yeux deux secondes.
+        Le plus efficace : imaginez le point brillant du haut en train de passer <em>devant</em>
+        vous.
+      </p>
+      <p>
+        Les boutons <strong>Imposer un sens</strong> réintroduisent brièvement un dégradé de
+        profondeur, le temps que la perception s'accroche — puis l'indice s'efface et l'ambiguïté
+        revient. Souvent, le sens choisi reste.
+      </p>
+    </article>
+
+    <article class="note">
+      <h2>Le spécimen</h2>
+      <p>
+        Deux surfaces de révolution imbriquées : une <strong>coque sphéroïdale</strong> ouverte
+        aux pôles, et une paire d'<strong>entonnoirs</strong> qui rentrent par ces ouvertures et
+        se rejoignent en une colonne axiale.
+      </p>
+      <pre class="eq">coque    ρ = W·sin v,  y = k·cos v
+entonnoir ρ = m·a² + ε,  y = ±a·y₀
+
+x = ρ·cos(u+θ)
+z = ρ·sin(u+θ)   <em>← jeté à la projection</em></pre>
+      <p>
+        Le curseur <em>Évasement</em> passe de <em>a²</em> à <em>a⁴</em> : d'une trompette
+        largement ouverte à une aiguille qui ne s'évase qu'au dernier moment. La bouche, elle,
+        reste soudée à l'ouverture de la coque.
+      </p>
+    </article>
+  </section>
+
+  <footer>Rendu en direct · canvas · ~34 000 points</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas  = document.getElementById("cv");
+  var stage   = document.getElementById("stage");
+  var ctx     = canvas.getContext("2d", { alpha: false });
+
+  var elSpeed = document.getElementById("speed");
+  var elShape = document.getElementById("shape");
+  var elDens  = document.getElementById("dens");
+  var outSpeed = document.getElementById("speedOut");
+  var outShape = document.getElementById("shapeOut");
+  var outDens  = document.getElementById("densOut");
+  var outAssist = document.getElementById("assistOut");
+  var btnCW = document.getElementById("cw");
+  var btnCCW = document.getElementById("ccw");
+  var btnDepth = document.getElementById("depth");
+  var btnPlay = document.getElementById("play");
+  var readout = document.getElementById("readout");
+
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------------- point cloud ---------------- */
+
+  var MAX = 60000;
+
+  // Radius of every point is radA + radB*mA + radC*mB, so the flare stays a live
+  // control without rebuilding the cloud.
+  var radA = new Float32Array(MAX);
+  var radB = new Float32Array(MAX);
+  var radC = new Float32Array(MAX);
+  var pY   = new Float32Array(MAX);
+  var cu   = new Float32Array(MAX);
+  var su   = new Float32Array(MAX);
+  var pr   = new Float32Array(MAX);
+  var pg   = new Float32Array(MAX);
+  var pb   = new Float32Array(MAX);
+
+  var W_HALF = 1;        // equatorial radius
+  var K_HALF = 1.87;     // polar half-height — the reference proportion
+  var MOUTH  = 0.295;    // radius of the polar opening
+  // The shell stops exactly where the funnel enters, so mouth and hole always join.
+  var CAP    = Math.sqrt(1 - MOUTH * MOUTH);
+  var Y_MOUTH = CAP * K_HALF;
+  var FLOOR  = 0.012;    // residual radius of the axial column
+  var FUNNEL_SHARE = 0.20;
+
+  // t = 0 at the equator of the shell, 1 deep in the throat
+  function ramp(t, out) {
+    var a;
+    if (t < 0.55) {
+      a = t / 0.55;
+      out[0] = 0.11 + (0.19 - 0.11) * a;
+      out[1] = 0.42 + (0.80 - 0.42) * a;
+      out[2] = 0.38 + (0.42 - 0.38) * a;
+    } else {
+      a = (t - 0.55) / 0.45;
+      out[0] = 0.19 + (0.74 - 0.19) * a;
+      out[1] = 0.80 + (1.00 - 0.80) * a;
+      out[2] = 0.42 + (0.34 - 0.42) * a;
+    }
+  }
+
+  function buildCloud() {
+    var c = [0, 0, 0];
+    for (var i = 0; i < MAX; i++) {
+      var u = Math.random() * Math.PI * 2;
+      cu[i] = Math.cos(u);
+      su[i] = Math.sin(u);
+
+      var jitter = (Math.random() + Math.random() + Math.random() - 1.5) * 0.02;
+      var t, emit;
+
+      if (Math.random() < FUNNEL_SHARE) {
+        // funnel: pick the normalised height a with density proportional to radius
+        var aa = 0;
+        for (var guard = 0; guard < 24; guard++) {
+          aa = Math.random();
+          if (Math.random() < (MOUTH * aa * aa + FLOOR) / (MOUTH + FLOOR)) break;
+        }
+        var a2 = aa * aa;
+        radA[i] = FLOOR + jitter * 0.3;
+        radB[i] = a2;          // wide trumpet
+        radC[i] = a2 * a2;     // tight needle — the flare control blends the two
+        pY[i] = (Math.random() < 0.5 ? 1 : -1) * aa * Y_MOUTH * (1 + jitter);
+        t = 0.5 + (1 - aa) * 0.5;
+        emit = 0.72 + (1 - aa) * 0.62;
+      } else {
+        // shell: uniform in cos v over the open band gives uniform area on the sphere
+        var cosv = (Math.random() * 2 - 1) * CAP;
+        radA[i] = W_HALF * Math.sqrt(1 - cosv * cosv) * (1 + jitter);
+        radB[i] = 0;
+        radC[i] = 0;
+        pY[i] = K_HALF * cosv * (1 + jitter);
+        t = Math.abs(cosv) * 0.45;
+        emit = 0.62;
+      }
+
+      ramp(t, c);
+      pr[i] = c[0] * emit;
+      pg[i] = c[1] * emit;
+      pb[i] = c[2] * emit;
+    }
+  }
+  buildCloud();
+
+  /* ---------------- framebuffer ---------------- */
+
+  var W = 0, H = 0, img = null, data = null;
+  var acc, stamp, touched;   // acc is interleaved rgb — one cache line per pixel
+  var tintR, tintB;
+  var tCount = 0, frameId = 1;
+
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    var rect = stage.getBoundingClientRect();
+    var w = Math.max(120, Math.round(rect.width * dpr));
+    var h = Math.max(120, Math.round(rect.height * dpr));
+    if (w === W && h === H) return;
+
+    W = w; H = h;
+    canvas.width = W; canvas.height = H;
+
+    img = ctx.createImageData(W, H);
+    data = img.data;
+    for (var i = 3; i < data.length; i += 4) data[i] = 255;
+
+    var n = W * H;
+    acc = new Float32Array(n * 3);
+    stamp = new Uint32Array(n);
+    touched = new Int32Array(MAX * 4);
+    tCount = 0;
+    frameId = 1;
+
+    // screen-space tint: cool on the left, warm on the right. Purely 2D, so it
+    // adds depth-free atmosphere without ever betraying the rotation.
+    tintR = new Float32Array(W);
+    tintB = new Float32Array(W);
+    for (var x = 0; x < W; x++) {
+      var f = x / (W - 1);
+      tintB[x] = 1 + (1 - f) * 0.38;
+      tintR[x] = 1 + f * 0.20;
+    }
+  }
+
+  /* ---------------- state ---------------- */
+
+  var angle = 0;
+  var spinDir = 1;
+  var speed = 0.45;          // turns per second
+  var flare = 0.35;          // 0 = wide trumpet, 1 = tight needle
+  var count = 34000;
+  var depthOn = false;
+  var assist = 0;            // transient depth cue from the nudge buttons
+  var assistHeld = false;
+  var playing = !reduced;
+  var dragging = false, dragX = 0;
+
+  function fmt(n, d) {
+    return n.toFixed(d).replace(".", ",");
+  }
+
+  function syncSpeed() {
+    speed = elSpeed.value / 100;
+    outSpeed.textContent = fmt(speed, 2) + " tr/s";
+  }
+  function syncShape() {
+    flare = elShape.value / 100;
+    var name = flare < 0.25 ? "trompette" : (flare < 0.65 ? "entonnoir" : "aiguille");
+    outShape.textContent = fmt(flare, 2) + " · " + name;
+  }
+  function syncDens() {
+    count = elDens.value * 1000;
+    outDens.textContent = (count / 1000).toFixed(0) + " 000 pts";
+  }
+  syncSpeed(); syncShape(); syncDens();
+
+  elSpeed.addEventListener("input", syncSpeed);
+  elShape.addEventListener("input", syncShape);
+  elDens.addEventListener("input", syncDens);
+
+  function syncReadout() {
+    var cue = depthOn ? 1 : assist;
+    if (cue > 0.35) {
+      readout.textContent = "Sens réel — " + (spinDir > 0 ? "horaire (vu du dessus)" : "antihoraire (vu du dessus)");
+      readout.classList.add("live");
+    } else {
+      readout.textContent = "Sens réel — indéterminable";
+      readout.classList.remove("live");
+    }
+  }
+
+  btnDepth.addEventListener("click", function () {
+    depthOn = !depthOn;
+    btnDepth.setAttribute("aria-pressed", String(depthOn));
+    btnDepth.textContent = depthOn ? "Masquer la profondeur" : "Révéler la profondeur";
+    syncReadout();
+    if (!playing) draw(0);
+  });
+
+  btnPlay.addEventListener("click", function () {
+    playing = !playing;
+    btnPlay.setAttribute("aria-pressed", String(playing));
+    btnPlay.textContent = playing ? "Pause" : "Lecture";
+    if (playing) { last = 0; requestAnimationFrame(loop); }
+  });
+  if (reduced) {
+    btnPlay.setAttribute("aria-pressed", "false");
+    btnPlay.textContent = "Lecture";
+  }
+
+  function nudge(dir, btn) {
+    return function (ev) {
+      ev.preventDefault();
+      spinDir = dir;
+      assistHeld = true;
+      btn.classList.add("held");
+      outAssist.textContent = dir > 0 ? "horaire" : "antihoraire";
+      if (!playing) {
+        playing = true;
+        btnPlay.setAttribute("aria-pressed", "true");
+        btnPlay.textContent = "Pause";
+        last = 0;
+        requestAnimationFrame(loop);
+      }
+    };
+  }
+  function release() {
+    assistHeld = false;
+    btnCW.classList.remove("held");
+    btnCCW.classList.remove("held");
+    outAssist.textContent = "—";
+  }
+  [[btnCW, 1], [btnCCW, -1]].forEach(function (pair) {
+    var btn = pair[0], dir = pair[1];
+    var down = nudge(dir, btn);
+    btn.addEventListener("pointerdown", down);
+    btn.addEventListener("keydown", function (e) {
+      if (e.key === " " || e.key === "Enter") down(e);
+    });
+    btn.addEventListener("keyup", release);
+    btn.addEventListener("blur", release);
+  });
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.target.tagName === "BUTTON") return;
+    dragging = true;
+    dragX = e.clientX;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    angle += (e.clientX - dragX) * 0.008;
+    dragX = e.clientX;
+    if (!playing) draw(0);
+  });
+  stage.addEventListener("pointerup", function () { dragging = false; });
+
+  /* ---------------- render ---------------- */
+
+  function draw(dt) {
+    resize();
+    if (!data) return;
+
+    if (!dragging) angle += speed * Math.PI * 2 * spinDir * dt;
+
+    if (assistHeld) assist = Math.min(1, assist + dt * 5);
+    else assist = Math.max(0, assist - dt * 0.9);
+
+    var cue = depthOn ? 1 : assist * 0.9;
+
+    // clear only what we lit last frame
+    for (var k = 0; k < tCount; k++) {
+      var p = touched[k] << 2;
+      data[p] = 0; data[p + 1] = 0; data[p + 2] = 0;
+    }
+    tCount = 0;
+    frameId++;
+
+    var C = Math.cos(angle), S = Math.sin(angle);
+    var scale = Math.min(W / (2 * W_HALF), H / (2 * K_HALF)) * 0.92;
+    var ox = W * 0.5, oy = H * 0.5;
+    var invZ = 1 / W_HALF;
+    var n = count;
+    var mA = MOUTH * (1 - flare), mB = MOUTH * flare;
+
+    for (var i = 0; i < n; i++) {
+      var rho = radA[i] + radB[i] * mA + radC[i] * mB;
+      var ux = cu[i], uz = su[i];
+      var x = rho * (ux * C - uz * S);
+      var z = rho * (ux * S + uz * C);
+
+      var sx = ox + x * scale;
+      var sy = oy - pY[i] * scale;
+
+      var x0 = sx | 0, y0 = sy | 0;
+      if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= H - 1) continue;
+
+      var r = pr[i], g = pg[i], b = pb[i];
+
+      if (cue > 0) {
+        // The silhouette rim sits at z = 0, so brightness alone barely moves the
+        // most visible part of the shape. Shifting the receding half toward the
+        // cool end as well is what actually makes the direction readable.
+        var f = 0.5 + z * invZ * 0.5;             // 0 receding, 1 approaching
+        var w = 1 + cue * (0.10 + 1.85 * f * f - 1);
+        var k = cue * (1 - f) * (1 - f) * 0.92;
+        var lum = (r + g + b) * 0.3333;
+        r = (r * (1 - k) + lum * 0.26 * k) * w;
+        g = (g * (1 - k) + lum * 0.60 * k) * w;
+        b = (b * (1 - k) + lum * 1.40 * k) * w;
+      }
+
+      var ax = sx - x0, ay = sy - y0;
+      var iax = 1 - ax, iay = 1 - ay;
+      var base = y0 * W + x0;
+
+      splat(base,         iax * iay, r, g, b);
+      splat(base + 1,     ax * iay,  r, g, b);
+      splat(base + W,     iax * ay,  r, g, b);
+      splat(base + W + 1, ax * ay,   r, g, b);
+    }
+
+    // Tone map the lit pixels only. Compressing the brightest channel and scaling
+    // the others by the same factor keeps the hue as density rises, instead of
+    // letting every dense region bleach to white.
+    for (var t = 0; t < tCount; t++) {
+      var idx = touched[t];
+      var col = idx % W;
+      var a = idx * 3;
+      var ar = acc[a]     * 6.0 * tintR[col];
+      var ag = acc[a + 1] * 6.0;
+      var ab = acc[a + 2] * 6.0 * tintB[col];
+      var mx = ar > ag ? (ar > ab ? ar : ab) : (ag > ab ? ag : ab);
+      var q = idx << 2;
+      if (mx > 0) {
+        var f = 255 / (1 + mx);
+        data[q]     = ar * f;
+        data[q + 1] = ag * f;
+        data[q + 2] = ab * f;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function splat(idx, w, r, g, b) {
+    var a = idx * 3;
+    if (stamp[idx] !== frameId) {
+      stamp[idx] = frameId;
+      acc[a] = 0; acc[a + 1] = 0; acc[a + 2] = 0;
+      touched[tCount++] = idx;
+    }
+    acc[a]     += r * w;
+    acc[a + 1] += g * w;
+    acc[a + 2] += b * w;
+  }
+
+  var last = 0;
+  function loop(now) {
+    if (!last) last = now;
+    var dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    draw(dt);
+    syncReadout();
+    if (playing || assist > 0) requestAnimationFrame(loop);
+    else last = 0;
+  }
+
+  window.addEventListener("resize", function () { draw(0); });
+  draw(0);
+  if (playing) requestAnimationFrame(loop);
+})();
+</script>
