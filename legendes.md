@@ -120,7 +120,7 @@ Horaire ou antihoraire chez vous ? Et est-ce que ça a basculé ?
 
 > Les deux disques verts ont rigoureusement le même rayon.
 
-Celui du bas paraît plus grand. Il ne l'est pas.
+Celui de droite paraît plus grand. Il ne l'est pas.
 
 Votre perception de la taille n'est pas absolue, elle est relative : un disque
 jugé contre de grands voisins est ramené vers le bas, un disque jugé contre de
