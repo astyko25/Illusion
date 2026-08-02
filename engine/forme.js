@@ -77,6 +77,10 @@
     // Sparse clouds need points that read as points. A single bilinear splat is
     // one pixel and vanishes; a small disc kernel gives a visible dot.
     var noyau = o.rayon > 0.6 ? disque(o.rayon) : null;
+    // Opaque mode: keep only the surface facing the viewer. This is the one cue
+    // the illusion can never have — occlusion is what makes a solid solid — so
+    // it exists to show what the object actually is, never inside the loop.
+    var avant = !!o.avant;
 
     for (var i = 0; i < n; i++) {
       var x = this.px[i], y = this.py[i], z = this.pz[i];
@@ -84,6 +88,7 @@
       var zr = z * C - x * Sn;
       var yr = y * ci - zr * si;
       zr = y * si + zr * ci;
+      if (avant && zr < 0) continue;
       Splatter.cue(out, this.cr[i], this.cg[i], this.cb[i], zr * invZ, cue);
       var sx = cx + xr * scale, sy = cy - yr * scale;
       if (noyau) {

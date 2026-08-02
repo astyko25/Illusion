@@ -304,6 +304,12 @@
     construitParams(courant);
     return true;
   };
+  /* Force the depth cue independently of the timeline. */
+  window.__override = function (v) {
+    stage.override = v;
+    stage.dessine(phase);
+    return true;
+  };
   window.__frame = function (i, n) {
     phase = (i % n) / n;
     stage.dessine(phase);
