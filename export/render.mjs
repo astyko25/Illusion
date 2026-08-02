@@ -111,10 +111,10 @@ for (const scene of choisies) {
     "-i", path.join(tmp, "%05d.png"),
     // Per-frame speckle is the worst case there is for inter-frame prediction:
     // at CRF 17 the ring alone came out at 32 Mbit/s. Instagram re-encodes Reels
-    // to roughly 4 Mbit/s, so everything above about 8 is discarded on upload —
+    // to roughly 4 Mbit/s, so a source at 6 keeps everything its encoder will retain —
     // the cap buys a much smaller file for no visible loss.
     "-c:v", "libx264", "-preset", "slow", "-crf", "20",
-    "-maxrate", "8M", "-bufsize", "16M",
+    "-maxrate", "6M", "-bufsize", "12M",
     // yuv420p and even dimensions: anything else and Instagram re-encodes or rejects.
     "-pix_fmt", "yuv420p",
     "-vf", `scale=${LARGEUR}:${HAUTEUR}:flags=lanczos`,
