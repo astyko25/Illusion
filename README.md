@@ -28,7 +28,7 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 02 | Silhouette tournante | ombrage et occlusion — un corps en aplat | 6 s | 30 s |
 | n° 03 | Cube de Necker | les arêtes cachées — aucune face n'est privilégiée | 10 s | 30 s |
 | n° 04 | Serpents tournants | rien : l'image est fixe, la rotation est fabriquée par la rétine | 8 s | 32 s |
-| n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 10 s | 30 s |
+| n° 05 | Damier d'Adelson | rien : deux cases portent le même gris, à l'octet près | 12 s | 36 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -36,6 +36,10 @@ souvent vingt secondes ou plus d'observation, et un tour unique ne laisse pas le
 temps au basculement d'arriver. Comme le cycle se referme à l'image près, les
 répétitions sont une copie de flux — pas de réencodage, pas de perte, et un coût
 quasi nul.
+
+Le n° 05 choisit sa paire de cases en sondant l'image finie, avec l'égalité
+exacte des pixels comme contrainte : si aucune paire ne la satisfait, le rendu
+échoue au lieu de produire un post dont la légende serait fausse.
 
 Les n° 01 à 03 sont bistables — deux lectures également valides, et le cerveau
 bascule de l'une à l'autre. Les n° 04 et 05 ne sont pas ambiguës : elles sont

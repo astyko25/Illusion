@@ -125,10 +125,18 @@
     // Reveal caption, under the specimen, fading in with the cue.
     if (s.revele && cue > 0.01) {
       ctx.globalAlpha = Math.min(1, cue * 1.4);
+      var yr = Math.round(this.H * 0.815);
+      var hr = Math.round(this.H * 0.055);
+      var scrim = ctx.createLinearGradient(0, yr - hr, 0, yr + hr);
+      scrim.addColorStop(0, "rgba(0,0,0,0)");
+      scrim.addColorStop(0.5, "rgba(0,0,0,0.82)");
+      scrim.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = scrim;
+      ctx.fillRect(0, yr - hr, this.W, hr * 2);
       ctx.font = "500 " + Math.round(this.W * 0.036) + "px PlexMono, monospace";
       ctx.fillStyle = PALETTE.citrine;
       letterSpace(ctx, "0.14em");
-      ctx.fillText(s.revele.texte.toUpperCase(), this.W / 2, this.cy + this.box * 0.5 + this.H * 0.045);
+      ctx.fillText(s.revele.texte.toUpperCase(), this.W / 2, yr + this.W * 0.013);
       letterSpace(ctx, "0px");
       ctx.globalAlpha = 1;
     }
