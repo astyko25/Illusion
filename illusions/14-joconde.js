@@ -19,7 +19,7 @@
 (function () {
   "use strict";
 
-  var MAX = 64000;
+  var MAX = 900000;
   var forme = null;
 
   var A = 0.70, B = 1.0, C = 0.84;   // head half-width, half-height, half-depth
@@ -89,7 +89,7 @@
     question: "Qui est-ce ?",
     duree: 13,
     params: [
-      { id: "pts", nom: "Densité", min: 20, max: 64, val: 58, mult: 1000, suffixe: " pts" },
+      { id: "pts", nom: "Densité", min: 20, max: 900, val: 260, mult: 1000, suffixe: " pts" },
       { id: "cheveux", nom: "Chevelure", min: 10, max: 55, val: 32, div: 100 },
       { id: "buste", nom: "Buste", min: 5, max: 45, val: 24, div: 100 },
       { id: "raie", nom: "Raie", min: 8, max: 40, val: 21, div: 100 }
@@ -184,7 +184,7 @@
         angle: phase * Math.PI * 2,
         inclinaison: 0.05,
         cue: cue,
-        gain: 6.4,
+        gain: 6.4 * 58 / p.pts,
         cadre: 0.97
       });
     }

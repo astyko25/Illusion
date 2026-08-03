@@ -76,6 +76,27 @@ d'ordinaire une perception bistable sur sa lecture attendue, mais pas ici. La
 tour tourne autour de son axe vertical, et les deux lectures la laissent
 debout — le préjugé de gravité n'a aucune prise sur le sens de rotation.
 
+### Densité et identité
+
+Le n° 14 a servi à trancher une hypothèse : la figure n'est-elle pas
+reconnaissable simplement faute de points ? Rendue à 58 000, 250 000 puis
+900 000 points, à luminosité compensée pour que seule la densité varie, la
+réponse est double. Le rendu s'améliore beaucoup — le grain disparaît, les
+formes se posent. L'identité, elle, ne bouge pas d'un pouce : c'est le même
+buste anonyme, en plus propre. Plus net encore, l'effet se retourne — à
+900 000 points la douceur révèle la simplicité de la géométrie sous-jacente, et
+la figure ressemble *davantage* à un mannequin.
+
+La densité gouverne la qualité, pas la ressemblance. L'information manquante
+n'est pas dans le nombre de points mais dans le modèle : une dizaine de
+gaussiennes ne fera jamais un visage particulier, quelle que soit la finesse de
+l'échantillonnage.
+
+Effet de bord utile : un nuage dense se compresse **mieux**. Le grain aléatoire
+est le pire cas pour la prédiction inter-images, et le lisser fait tomber le
+poids du fichier — 19,5 Mo à 260 000 points contre 27,7 Mo pour l'anneau à
+34 000.
+
 Le n° 14 répond par la négative à une question qu'on se posait : non, ce médium
 ne transporte pas la Joconde. Le buste se tient, mais personne ne la nommerait.
 Le résultat est moins décevant qu'instructif — **on ne connaît pas la Joconde
