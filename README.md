@@ -37,6 +37,7 @@ L'export a besoin de `ffmpeg` sur le PATH (`apt install ffmpeg`,
 | n° 11 | Sphère de points | tout sauf le mécanisme : la silhouette ne bouge jamais | 9 s | 36 s |
 | n° 12 | La tour Eiffel | profondeur — un objet familier reste pourtant indécidable | 12 s | 36 s |
 | n° 13 | Le visage | profondeur — mais le préjugé de visage refuse l'égalité des deux lectures | 12 s | 36 s |
+| n° 14 | La Joconde | profondeur — et un test de ce que le médium retient d'une identité | 13 s | 39 s |
 
 Une scène déclare la durée d'**un cycle**. L'export le répète pour atteindre la
 longueur visée (`--duree`, 32 s par défaut) : une bascule perceptive demande
@@ -74,6 +75,15 @@ Le n° 12 lève le doute sur la familiarité : un objet reconnaissable verrouill
 d'ordinaire une perception bistable sur sa lecture attendue, mais pas ici. La
 tour tourne autour de son axe vertical, et les deux lectures la laissent
 debout — le préjugé de gravité n'a aucune prise sur le sens de rotation.
+
+Le n° 14 répond par la négative à une question qu'on se posait : non, ce médium
+ne transporte pas la Joconde. Le buste se tient, mais personne ne la nommerait.
+Le résultat est moins décevant qu'instructif — **on ne connaît pas la Joconde
+par sa géométrie**. Personne ne l'a jamais vue en trois dimensions : ce qu'on
+reconnaît est une image peinte, sa couleur, son sfumato, son paysage. Réduite à
+une forme, il ne reste rien qui la désigne. Le test ne se généralise donc pas :
+pour quelqu'un qu'on connaît *en volume* — vu bouger, sous tous les angles — la
+géométrie est précisément par où on le reconnaît.
 
 Le n° 13 porte des **réglages d'identité** — largeur du crâne, mâchoire, nez,
 arcades, lèvres, écartement des yeux — pour répondre à une question précise : ce
